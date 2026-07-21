@@ -8,13 +8,20 @@
   migrator and record types, so the JS peer is checked against Swift's
   real behaviour rather than against a transcription of it.
 
-    refgen create  <path>   build a reference database via GRDB
-    refgen inspect <path>   open a database, decode every record type,
-                            and emit JSON for the JS harness to assert on
+    refgen create  <path>                        build a reference database via GRDB
+    refgen inspect <path>                        open a database, decode every record
+                                                 type, emit JSON for the JS harness
+    refgen publish <path> <configId> <out> <ts>  publish a screen cartridge
+    refgen publish-project <path> <out> <ts>     publish the project-only cartridge
 
   `inspect` is the round-trip proof: if GRDB opens a JS-authored file,
   applies no migrations, and decodes every record, the desktop app opens
   it too.
+
+  `publish` takes an explicit `generatedAt` (unix ms) so the JS peer can
+  produce a comparable cartridge — otherwise the two differ by a timestamp
+  and every diff is noise. It mutates the source via markPublished, so the
+  equivalence harness gives each implementation its own copy.
 
 ******************************************************
 */
@@ -52,7 +59,12 @@ func appliedIdentifiers(_ path: String) throws -> [String] {
     }
 }
 
-let usage = "usage: refgen create|inspect <path>"
+let usage = """
+usage: refgen create <path>
+       refgen inspect <path>
+       refgen publish <path> <configId> <out> <generatedAtMs>
+       refgen publish-project <path> <out> <generatedAtMs>
+"""
 guard CommandLine.arguments.count >= 3 else {
     FileHandle.standardError.write(Data((usage + "\n").utf8))
     exit(2)
@@ -147,6 +159,36 @@ case "inspect":
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
     print(String(data: try encoder.encode(summary), encoding: .utf8)!)
+
+case "publish":
+    guard CommandLine.arguments.count >= 6,
+          let configId = Int64(CommandLine.arguments[3]),
+          let generatedAt = Int64(CommandLine.arguments[5])
+    else {
+        FileHandle.standardError.write(Data((usage + "\n").utf8))
+        exit(2)
+    }
+    let out = CommandLine.arguments[4]
+    let store = try MarqueeStore(path: path)
+    let result = try await store.publishCartridge(
+        configId: configId,
+        to: URL(fileURLWithPath: out),
+        now: generatedAt)
+    print("published \(result.screenId) rev \(result.publishedRevision) — \(result.mediaFileCount) file(s)")
+
+case "publish-project":
+    guard CommandLine.arguments.count >= 5,
+          let generatedAt = Int64(CommandLine.arguments[4])
+    else {
+        FileHandle.standardError.write(Data((usage + "\n").utf8))
+        exit(2)
+    }
+    let out = CommandLine.arguments[3]
+    let store = try MarqueeStore(path: path)
+    let result = try await store.publishProjectCartridge(
+        to: URL(fileURLWithPath: out),
+        now: generatedAt)
+    print("published project cartridge — \(result.mediaFileCount) file(s)")
 
 default:
     FileHandle.standardError.write(Data((usage + "\n").utf8))
