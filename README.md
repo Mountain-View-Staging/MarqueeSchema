@@ -15,10 +15,14 @@ The macOS Studio and the web Studio are **peers over one dataset** — either ma
 
 ```bash
 npm run generate    # regenerate dist/ from schema/
-npm run check       # fail if dist/ is stale                    (CI)
-npm run verify      # fail if schema/ diverges from Swift's output (CI)
+npm run check       # fail if dist/ is stale                       (CI, no Swift)
+npm run verify      # fail if schema/ diverges from Swift's output (CI, no Swift)
 npm test            # both
-npm run reference   # rebuild the fixture from live MarqueeDataKit (macOS only)
+
+npm run swift:build # build the Swift tool                         (macOS)
+npm run roundtrip   # sql.js <-> GRDB file-compatibility proof      (macOS)
+npm run test:full   # everything
+npm run reference   # rebuild the fixture from live MarqueeDataKit  (macOS)
 ```
 
 `verify` builds a database from `schema/` and compares it structurally to
@@ -29,6 +33,20 @@ check, not a self-consistency check.
 
 Stored DDL *text* is deliberately not compared: SQLite keeps CREATE statements
 verbatim, so comment and whitespace differences would produce noise that means nothing.
+
+`roundtrip` is the file-compatibility proof, and the reason to believe the two apps
+can hand the same file back and forth:
+
+- **Phase A** — JS authors a project from scratch with sql.js + `dist/migrations.js`;
+  GRDB opens it, applies **no** migrations, and decodes every record type.
+- **Phase B** — Swift authors a project; JS opens it and adds media files, items, a
+  playlist with entries and a directive, a screen with a location and a schedule
+  entry, tags, and a project day; Swift reopens and sees exactly those rows. Runs with
+  `PRAGMA foreign_keys = ON`, and asserts that the `media_item` CHECK and FK `RESTRICT`
+  guards both fire.
+- **Supersession** — an unknown identifier is detected by `hasBeenSuperseded`.
+
+31 checks. `npm run swift:build` first — it needs the `refgen` binary.
 
 ## Adding a migration
 
@@ -57,6 +75,11 @@ tables an old peer must populate to keep an invariant true.
 a database carries unknown identifiers — both proceed silently. Callers must check
 (`DatabaseMigrator.hasBeenSuperseded(_:)` / `hasBeenSuperseded(db)`) and drop to read-only.
 
+**Always write the bookkeeping.** A database with the right tables but no `grdb_migrations`
+rows is *not* compatible — GRDB re-runs `v1-relational` and hard-fails with
+`SQLite error 1: table project already exists`. Verified empirically, 2026-07-21. Use
+`migrate(db)` from `dist/migrations.js`; never apply the SQL files by hand.
+
 ## Known incident — `v8-entry-duration-override`
 
 `v8` was edited in place after shipping, changing a single `start_time`/`end_time` pair into
@@ -77,7 +100,9 @@ dist/                           GENERATED — do not edit
 tools/loader.mjs                read + validate the source of truth
 tools/generate.mjs              emit dist/
 tools/verify.mjs                structural diff vs the Swift reference
-tools/swift-reference/          SwiftPM tool that builds the fixture via MarqueeDataKit
+tools/swift-reference/          SwiftPM tool: `create` the fixture, `inspect` any database
+                                through the live MarqueeDataKit records
+test/roundtrip.mjs              sql.js <-> GRDB file-compatibility proof
 test/fixtures/reference.db      checked-in Swift-produced database
 ```
 

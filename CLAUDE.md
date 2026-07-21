@@ -56,6 +56,9 @@ one. It requires the sibling checkout and macOS 15+.
 
 - 13 migrations (`v1-relational` … `v13-project-days`), transcribed from `MarqueeStore.swift`
   and **verified structurally identical** to Swift's output.
+- **File compatibility proven both directions** (`npm run roundtrip`, 31 checks): JS-authored
+  databases open in GRDB with zero migrations run, and JS mutations to a Swift-authored
+  database survive a GRDB reopen intact.
 - `v14-project-checkout` is specified but **not yet added** — see
   [`MarqueeStudioWeb-Architecture.md`](../MarqueeStudio/MarqueeStudioWeb/Docs/MarqueeStudioWeb-Architecture.md) §3.2.1.
 - Behavioural contracts (thumbnails, cartridge projection, UUID/hash conventions) still live in

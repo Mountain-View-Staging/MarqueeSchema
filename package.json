@@ -17,9 +17,15 @@
     "generate": "node tools/generate.mjs",
     "check": "node --no-warnings tools/generate.mjs --check",
     "verify": "node --no-warnings tools/verify.mjs",
-    "reference": "cd tools/swift-reference && swift run refgen ../../test/fixtures/reference.db && sqlite3 ../../test/fixtures/reference.db 'PRAGMA wal_checkpoint(TRUNCATE);'",
-    "test": "npm run check && npm run verify"
+    "roundtrip": "node --no-warnings test/roundtrip.mjs",
+    "swift:build": "cd tools/swift-reference && swift build",
+    "reference": "cd tools/swift-reference && swift run refgen create ../../test/fixtures/reference.db && sqlite3 ../../test/fixtures/reference.db 'PRAGMA wal_checkpoint(TRUNCATE);'",
+    "test": "npm run check && npm run verify",
+    "test:full": "npm test && npm run swift:build && npm run roundtrip"
   },
   "author": "Dustin Nielson",
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "sql.js": "^1.14.1"
+  }
 }
