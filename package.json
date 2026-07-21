@@ -1,0 +1,25 @@
+{
+  "name": "marquee-schema",
+  "version": "13.0.0",
+  "description": "Source of truth for the Marquee project schema — shared by MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js).",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5"
+  },
+  "exports": {
+    "./migrations": "./dist/migrations.js"
+  },
+  "files": [
+    "dist",
+    "schema"
+  ],
+  "scripts": {
+    "generate": "node tools/generate.mjs",
+    "check": "node --no-warnings tools/generate.mjs --check",
+    "verify": "node --no-warnings tools/verify.mjs",
+    "reference": "cd tools/swift-reference && swift run refgen ../../test/fixtures/reference.db && sqlite3 ../../test/fixtures/reference.db 'PRAGMA wal_checkpoint(TRUNCATE);'",
+    "test": "npm run check && npm run verify"
+  },
+  "author": "Dustin Nielson",
+  "license": "ISC"
+}

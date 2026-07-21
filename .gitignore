@@ -1,0 +1,10 @@
+.DS_Store
+node_modules/
+
+# Swift reference tool build products
+tools/swift-reference/.build/
+tools/swift-reference/.swiftpm/
+
+# SQLite sidecars — the fixture is committed, its WAL/SHM are not
+*.db-wal
+*.db-shm

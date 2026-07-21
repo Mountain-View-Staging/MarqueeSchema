@@ -1,0 +1,1 @@
+ALTER TABLE project ADD COLUMN retain_originals INTEGER NOT NULL DEFAULT 1;
