@@ -1,10 +1,10 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   e1b4076b83df649400d407f9e5c0dc4aa31316f8481a60cbe958465dd24e5352
+// Checksum:   5ae651059b7200c19bbfe53f96472263dfd18d3c10c04d074e8480451cb16b7f
 
 export const MIGRATION_TABLE = "grdb_migrations"
-export const SCHEMA_CHECKSUM = "e1b4076b83df649400d407f9e5c0dc4aa31316f8481a60cbe958465dd24e5352"
+export const SCHEMA_CHECKSUM = "5ae651059b7200c19bbfe53f96472263dfd18d3c10c04d074e8480451cb16b7f"
 
 /** Ordered, append-only. Index position is meaningful; never reorder. */
 export const MIGRATIONS = Object.freeze([
@@ -34,6 +34,8 @@ export const MIGRATIONS = Object.freeze([
     { identifier: "v12-project-wallpapers", sql: "ALTER TABLE project ADD COLUMN show_wallpaper_item_id INTEGER\n  REFERENCES media_item(id) ON DELETE RESTRICT;\n\nALTER TABLE project ADD COLUMN desktop_wallpaper_item_id INTEGER\n  REFERENCES media_item(id) ON DELETE RESTRICT;\n" },
     // Explicit non-contiguous schedule days, authored in the project timezone and stored verbatim as unix ms.
     { identifier: "v13-project-days", sql: "CREATE TABLE project_days (\n  id         INTEGER PRIMARY KEY AUTOINCREMENT,\n  day        TEXT    NOT NULL UNIQUE,\n  start_time INTEGER NOT NULL,\n  end_time   INTEGER NOT NULL,\n  created    INTEGER NOT NULL,\n  updated    INTEGER NOT NULL\n);\nCREATE INDEX idx_project_day_start ON project_days (start_time);\n" },
+    // Marks whether a show requires an enable-edit code. A FLAG ONLY — the verifier lives server-side in KV, never in the database. The authoring DB is publicly downloadable and the project row is copied verbatim into every published cartridge, so a hash stored here would be offline-crackable and shipped to every venue device.
+    { identifier: "v14-project-edit-gate", sql: "ALTER TABLE project ADD COLUMN edit_code_required INTEGER NOT NULL DEFAULT 0;\n" },
 ].map(Object.freeze))
 
 export const KNOWN_IDENTIFIERS = Object.freeze(MIGRATIONS.map((m) => m.identifier))

@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   e1b4076b83df649400d407f9e5c0dc4aa31316f8481a60cbe958465dd24e5352
+// Checksum:   5ae651059b7200c19bbfe53f96472263dfd18d3c10c04d074e8480451cb16b7f
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "e1b4076b83df649400d407f9e5c0dc4aa31316f8481a60cbe958465dd24e5352"
+    public static let checksum = "5ae651059b7200c19bbfe53f96472263dfd18d3c10c04d074e8480451cb16b7f"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -32,6 +32,7 @@ public enum MarqueeSchema {
         "v11-project-code",
         "v12-project-wallpapers",
         "v13-project-days",
+        "v14-project-edit-gate",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -284,6 +285,12 @@ CREATE TABLE project_days (
   updated    INTEGER NOT NULL
 );
 CREATE INDEX idx_project_day_start ON project_days (start_time);
+"""#)
+        }
+        // Marks whether a show requires an enable-edit code. A FLAG ONLY — the verifier lives server-side in KV, never in the database. The authoring DB is publicly downloadable and the project row is copied verbatim into every published cartridge, so a hash stored here would be offline-crackable and shipped to every venue device.
+        migrator.registerMigration("v14-project-edit-gate") { db in
+            try db.execute(sql: #"""
+ALTER TABLE project ADD COLUMN edit_code_required INTEGER NOT NULL DEFAULT 0;
 """#)
         }
         return migrator

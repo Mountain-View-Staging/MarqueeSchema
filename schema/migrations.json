@@ -4,18 +4,75 @@
   "schemaName": "Marquee",
   "migrationTable": "grdb_migrations",
   "migrations": [
-    { "identifier": "v1-relational",             "file": "sql/001-v1-relational.sql",             "note": "Relational core: project / media_file / media_item / media_item_tag. Replaces the former blob-mirror `records` table." },
-    { "identifier": "v2-tags",                   "file": "sql/002-v2-tags.sql",                   "note": "Shared tag vocabulary + polymorphic cross-type assignment. Dissolves MediaSet: grouping = entities carrying a tag." },
-    { "identifier": "v3-source-optimized",       "file": "sql/003-v3-source-optimized.sql",       "note": "Split storage into write-once original + optional optimized copy. Deliverable = optimized ?? source." },
-    { "identifier": "v4-retain-originals",       "file": "sql/004-v4-retain-originals.sql",       "note": "Per-project default for optimize original-retention (keep vs consume)." },
-    { "identifier": "v5-playlists",              "file": "sql/005-v5-playlists.sql",              "note": "Playlists: ordered MediaItem instances + per-instance directives. The Playlist is the single directive authority." },
-    { "identifier": "v6-project-schedule",       "file": "sql/006-v6-project-schedule.sql",       "note": "Project timezone. (The former start_date/end_date range moved to project_days in v13; this migration was trimmed in place.)" },
-    { "identifier": "v7-entry-resource-type",    "file": "sql/007-v7-entry-resource-type.sql",    "note": "Forward-declared open-vocabulary discriminator so the entry contract is stable. Today only 'media_item' resolves." },
-    { "identifier": "v8-entry-duration-override","file": "sql/008-v8-entry-duration-override.sql","note": "Per-instance playback windows in seconds of MEDIA time (clip offsets, not wall-clock), one pair per orientation." },
-    { "identifier": "v9-screens",                "file": "sql/009-v9-screens.sql",                "note": "Screens: screen_config (scheduling unit) + screen_code (endpoints) + screen_schedule_entry (most-recent-<=-now-wins per slot)." },
-    { "identifier": "v10-screen-distribution",   "file": "sql/010-v10-screen-distribution.sql",   "note": "Cartridge-as-file identity: user-settable screen_id names the cartridge; screen_code becomes screen_location. Length/format/uniqueness are UI-enforced, not DB hard-stops." },
-    { "identifier": "v11-project-code",          "file": "sql/011-v11-project-code.sql",          "note": "ShowCode: short user-settable project addressing code. Consumers self-resolve <projectCode>/<screenCode>.db." },
-    { "identifier": "v12-project-wallpapers",    "file": "sql/012-v12-project-wallpapers.sql",    "note": "Project-level wallpaper pointers. ADD COLUMN with REFERENCES is legal because the NULL default satisfies SQLite's add-column FK rule." },
-    { "identifier": "v13-project-days",          "file": "sql/013-v13-project-days.sql",          "note": "Explicit non-contiguous schedule days, authored in the project timezone and stored verbatim as unix ms." }
+    {
+      "identifier": "v1-relational",
+      "file": "sql/001-v1-relational.sql",
+      "note": "Relational core: project / media_file / media_item / media_item_tag. Replaces the former blob-mirror `records` table."
+    },
+    {
+      "identifier": "v2-tags",
+      "file": "sql/002-v2-tags.sql",
+      "note": "Shared tag vocabulary + polymorphic cross-type assignment. Dissolves MediaSet: grouping = entities carrying a tag."
+    },
+    {
+      "identifier": "v3-source-optimized",
+      "file": "sql/003-v3-source-optimized.sql",
+      "note": "Split storage into write-once original + optional optimized copy. Deliverable = optimized ?? source."
+    },
+    {
+      "identifier": "v4-retain-originals",
+      "file": "sql/004-v4-retain-originals.sql",
+      "note": "Per-project default for optimize original-retention (keep vs consume)."
+    },
+    {
+      "identifier": "v5-playlists",
+      "file": "sql/005-v5-playlists.sql",
+      "note": "Playlists: ordered MediaItem instances + per-instance directives. The Playlist is the single directive authority."
+    },
+    {
+      "identifier": "v6-project-schedule",
+      "file": "sql/006-v6-project-schedule.sql",
+      "note": "Project timezone. (The former start_date/end_date range moved to project_days in v13; this migration was trimmed in place.)"
+    },
+    {
+      "identifier": "v7-entry-resource-type",
+      "file": "sql/007-v7-entry-resource-type.sql",
+      "note": "Forward-declared open-vocabulary discriminator so the entry contract is stable. Today only 'media_item' resolves."
+    },
+    {
+      "identifier": "v8-entry-duration-override",
+      "file": "sql/008-v8-entry-duration-override.sql",
+      "note": "Per-instance playback windows in seconds of MEDIA time (clip offsets, not wall-clock), one pair per orientation."
+    },
+    {
+      "identifier": "v9-screens",
+      "file": "sql/009-v9-screens.sql",
+      "note": "Screens: screen_config (scheduling unit) + screen_code (endpoints) + screen_schedule_entry (most-recent-<=-now-wins per slot)."
+    },
+    {
+      "identifier": "v10-screen-distribution",
+      "file": "sql/010-v10-screen-distribution.sql",
+      "note": "Cartridge-as-file identity: user-settable screen_id names the cartridge; screen_code becomes screen_location. Length/format/uniqueness are UI-enforced, not DB hard-stops."
+    },
+    {
+      "identifier": "v11-project-code",
+      "file": "sql/011-v11-project-code.sql",
+      "note": "ShowCode: short user-settable project addressing code. Consumers self-resolve <projectCode>/<screenCode>.db."
+    },
+    {
+      "identifier": "v12-project-wallpapers",
+      "file": "sql/012-v12-project-wallpapers.sql",
+      "note": "Project-level wallpaper pointers. ADD COLUMN with REFERENCES is legal because the NULL default satisfies SQLite's add-column FK rule."
+    },
+    {
+      "identifier": "v13-project-days",
+      "file": "sql/013-v13-project-days.sql",
+      "note": "Explicit non-contiguous schedule days, authored in the project timezone and stored verbatim as unix ms."
+    },
+    {
+      "identifier": "v14-project-edit-gate",
+      "file": "sql/014-v14-project-edit-gate.sql",
+      "note": "Marks whether a show requires an enable-edit code. A FLAG ONLY \u2014 the verifier lives server-side in KV, never in the database. The authoring DB is publicly downloadable and the project row is copied verbatim into every published cartridge, so a hash stored here would be offline-crackable and shipped to every venue device."
+    }
   ]
 }
