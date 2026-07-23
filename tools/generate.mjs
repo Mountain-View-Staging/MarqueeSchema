@@ -12,11 +12,20 @@
 
 ******************************************************
 */
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
-import { join } from 'node:path'
-import { loadMigrations, DIST_DIR } from './loader.mjs'
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs'
+import { join, dirname, basename } from 'node:path'
+import { loadMigrations, DIST_DIR, REPO_ROOT } from './loader.mjs'
 
 const CHECK_ONLY = process.argv.includes('--check')
+
+// The generated Swift migrator is ALSO written straight into MarqueeDataKit,
+// which adopts it directly (`MarqueeStore.migrator == MarqueeSchema.migrator`),
+// so the desktop can never drift from the shared schema. Sibling checkout via
+// the same relative path the Swift reference tool already assumes; skipped
+// gracefully when absent so a schema-only checkout still generates dist/.
+const DATAKIT_SWIFT = join(
+  REPO_ROOT, '..', 'SPM', 'MarqueeDataKit', 'Sources', 'MarqueeDataKit', 'MarqueeSchema.swift'
+)
 
 const banner = (checksum) => `// GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
@@ -161,26 +170,33 @@ ${cases}
 `
 }
 
-function emit(name, contents) {
-  const path = join(DIST_DIR, name)
+function emit(path, contents, { optional = false } = {}) {
+  const label = path.startsWith(DIST_DIR) ? `dist/${basename(path)}` : path
+  const dir = dirname(path)
+  // An optional target whose directory is not present (sibling repo not checked
+  // out) is not an error — dist/ is always generated; the copy is best-effort.
+  if (optional && !existsSync(dir)) {
+    console.log(`• skipped ${label} (target not present)`)
+    return true
+  }
   if (CHECK_ONLY) {
     let existing
     try {
       existing = readFileSync(path, 'utf8')
     } catch {
-      console.error(`✗ ${name} is missing. Run: node tools/generate.mjs`)
+      console.error(`✗ ${label} is missing. Run: node tools/generate.mjs`)
       return false
     }
     if (existing !== contents) {
-      console.error(`✗ ${name} is stale. Run: node tools/generate.mjs`)
+      console.error(`✗ ${label} is stale. Run: node tools/generate.mjs`)
       return false
     }
-    console.log(`✓ ${name} up to date`)
+    console.log(`✓ ${label} up to date`)
     return true
   }
-  mkdirSync(DIST_DIR, { recursive: true })
+  mkdirSync(dir, { recursive: true })
   writeFileSync(path, contents)
-  console.log(`wrote dist/${name}`)
+  console.log(`wrote ${label}`)
   return true
 }
 
@@ -192,9 +208,11 @@ try {
   process.exit(2)
 }
 
+const swift = renderSwift(schema)
 const results = [
-  emit('migrations.js', renderJavaScript(schema)),
-  emit('MarqueeSchema.swift', renderSwift(schema)),
+  emit(join(DIST_DIR, 'migrations.js'), renderJavaScript(schema)),
+  emit(join(DIST_DIR, 'MarqueeSchema.swift'), swift),
+  emit(DATAKIT_SWIFT, swift, { optional: true }),
 ]
 
 console.log(`${schema.migrations.length} migrations · checksum ${schema.checksum.slice(0, 16)}…`)

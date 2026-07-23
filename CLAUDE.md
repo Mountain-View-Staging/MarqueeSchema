@@ -47,19 +47,24 @@ one. It requires the sibling checkout and macOS 15+.
 
 - **Web:** import `dist/migrations.js` — `MIGRATIONS`, `migrate(db)`, `hasBeenSuperseded(db)`,
   `unknownIdentifiers(db)`.
-- **Swift:** copy `dist/MarqueeSchema.swift` into `MarqueeDataKit` and have `MarqueeStore` use
-  `MarqueeSchema.migrator`. **Not yet wired** — `MarqueeStore.swift` still declares its own
-  migrator inline. The generated file is verified byte-equivalent in behaviour, but adopting it
-  is a Swift-side change Dustin is picking up.
+- **Swift:** `MarqueeStore.migrator` delegates to `MarqueeSchema.migrator` from the generated
+  `MarqueeSchema.swift`. **Adopted 2026-07-23** — there is no inline migrator and no manual copy
+  step: `npm run generate` writes the Swift file straight into
+  `SPM/MarqueeDataKit/Sources/MarqueeDataKit/MarqueeSchema.swift` (sibling checkout; skipped
+  gracefully when absent) and `npm run check` fails if that copy is stale. Add migrations in
+  `schema/` here and regenerate — never in `MarqueeStore.swift`.
 
 ## Status
 
-- 13 migrations (`v1-relational` … `v13-project-days`), transcribed from `MarqueeStore.swift`
-  and **verified structurally identical** to Swift's output.
+- 14 migrations (`v1-relational` … `v14-project-edit-gate`). Both the Swift and JS migrators are
+  generated from `schema/` here; MarqueeDataKit adopts the generated Swift directly (see above),
+  so there is one migrator definition, not three.
 - **File compatibility proven both directions** (`npm run roundtrip`, 31 checks): JS-authored
   databases open in GRDB with zero migrations run, and JS mutations to a Swift-authored
   database survive a GRDB reopen intact.
-- `v14-project-checkout` is specified but **not yet added** — see
-  [`MarqueeStudioWeb-Architecture.md`](../MarqueeStudio/MarqueeStudioWeb/Docs/MarqueeStudioWeb-Architecture.md) §3.2.1.
+- The checkout lease is **not** a schema concern — it lives server-side in R2/KV
+  (`_studio/lock.json` + the enable-edit gate), so `v14` is the `edit_code_required` **flag only**
+  (a boolean that a gate exists), never a hash or holder. See
+  [`MarqueeStudioWeb-Architecture.md`](../MarqueeStudio/MarqueeStudioWeb/Docs/MarqueeStudioWeb-Architecture.md).
 - Behavioural contracts (thumbnails, cartridge projection, UUID/hash conventions) still live in
   the architecture doc; move them here as they stabilise.
