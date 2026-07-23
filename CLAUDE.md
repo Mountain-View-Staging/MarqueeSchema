@@ -18,12 +18,18 @@ has the same defect. So the DDL lives here, platform-neutral, and both sides are
 
 1. **`schema/` is the only place to edit.** `dist/` is generated; edits there are lost on the
    next `npm run generate` and cause `npm run check` to fail in CI.
-2. **Append-only.** Never reorder, never reuse an identifier, and **never edit a shipped
-   migration's SQL.** Databases record only the identifier — change the SQL behind it and
-   every existing database silently keeps the old shape. See the `v8` incident in
-   [README.md](README.md); it has already bitten this project once.
-3. **Additive, nullable-or-defaulted changes only**, unless you are coordinating a release of
-   both apps. This is what lets the two peers ship independently.
+2. **⚠️ PRE-MVP BASELINE MODE (since 2026-07-23).** The former v1..v14 append-only history was
+   flattened into a single `v1-baseline` because nothing consumes these databases with a shipped
+   MVP client yet. **Until an MVP client ships, the baseline SQL may be edited in place** — just
+   regenerate and re-verify. Once one ships, switch back to append-only (rules 2a/2b below), so
+   deployed databases can still migrate. Any pre-baseline database (old grdb_migrations) opens as
+   *superseded* and read-only — recreate it.
+   - **2a. Append-only (post-MVP).** Never reorder, never reuse an identifier, and **never edit a
+     shipped migration's SQL.** Databases record only the identifier — change the SQL behind it
+     and every existing database silently keeps the old shape. See the `v8` incident in
+     [README.md](README.md); it has already bitten this project once.
+   - **2b. Additive, nullable-or-defaulted changes only** (post-MVP), unless coordinating a
+     release of both apps. This is what lets the two peers ship independently.
 4. **Regenerate and verify before committing:** `npm test`. On macOS, refresh the Swift
    fixture first with `npm run reference` whenever `MarqueeDataKit`'s migrator changes.
 
@@ -56,9 +62,9 @@ one. It requires the sibling checkout and macOS 15+.
 
 ## Status
 
-- 14 migrations (`v1-relational` … `v14-project-edit-gate`). Both the Swift and JS migrators are
-  generated from `schema/` here; MarqueeDataKit adopts the generated Swift directly (see above),
-  so there is one migrator definition, not three.
+- **1 migration** — `v1-baseline` (the former v1..v14 flattened; see rule 2). Both the Swift and
+  JS migrators are generated from `schema/` here; MarqueeDataKit adopts the generated Swift
+  directly (see above), so there is one migrator definition, not three.
 - **File compatibility proven both directions** (`npm run roundtrip`, 31 checks): JS-authored
   databases open in GRDB with zero migrations run, and JS mutations to a Swift-authored
   database survive a GRDB reopen intact.

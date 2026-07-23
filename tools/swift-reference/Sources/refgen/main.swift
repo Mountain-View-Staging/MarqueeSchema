@@ -109,11 +109,20 @@ case "inspect":
 
     // Each of these decodes rows into the app's record types. A column the JS
     // peer got wrong — name, type, nullability — surfaces here as a decode error.
+    // A published cartridge carries only the tables it uses (a screen cartridge
+    // has no tags; project.db has no screens/playlists/directives/tags), so the
+    // optional tables are decoded only when present — the decode check still runs
+    // wherever a table exists, and a full authoring DB has them all.
+    let existingTables: Set<String> = try await store.writer.read { db in
+        Set(try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type='table'"))
+    }
     let files = try await service.listFiles()
     let items = try await service.listItems(includeArchived: true)
-    let playlists = try await store.playlists(includeArchived: true)
-    let screens = try await store.screenConfigs(includeArchived: true)
-    let tags = try await store.allTags()
+    let playlists = existingTables.contains("playlist")
+        ? try await store.playlists(includeArchived: true) : []
+    let screens = existingTables.contains("screen_config")
+        ? try await store.screenConfigs(includeArchived: true) : []
+    let tags = existingTables.contains("tag") ? try await store.allTags() : []
 
     var entryCount = 0
     var directiveCount = 0

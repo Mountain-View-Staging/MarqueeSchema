@@ -1,32 +1,3 @@
-// GENERATED FILE — DO NOT EDIT.
-// Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
-// Regenerate: node tools/generate.mjs
-// Checksum:   145ce5fb47ed5c91e2982b7533c886513153856226548fe362e758fd12e32c27
-
-import Foundation
-import GRDB
-
-/// The Marquee schema, generated from the shared `MarqueeSchema` repo.
-///
-/// Do not add migrations here — add them to `schema/migrations.json` in that
-/// repo and regenerate, so the Swift and JavaScript peers stay identical. The
-/// identifiers below are written verbatim into `grdb_migrations` and compared
-/// character-for-character across implementations.
-public enum MarqueeSchema {
-
-    /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "145ce5fb47ed5c91e2982b7533c886513153856226548fe362e758fd12e32c27"
-
-    /// Ordered, append-only.
-    public static let knownIdentifiers: [String] = [
-        "v1-baseline",
-    ]
-
-    public static var migrator: DatabaseMigrator {
-        var migrator = DatabaseMigrator()
-        // The full Marquee project schema as a single baseline, flattened from the former v1..v14 append-only history (2026-07-23).
-        migrator.registerMigration("v1-baseline") { db in
-            try db.execute(sql: #"""
 -- v1-baseline
 -- The full Marquee project schema as a single baseline.
 --
@@ -221,8 +192,3 @@ CREATE TABLE project_days (
 );
 
 CREATE INDEX idx_project_day_start ON project_days (start_time);
-"""#)
-        }
-        return migrator
-    }
-}

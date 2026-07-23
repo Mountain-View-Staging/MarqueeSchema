@@ -1,1 +1,0 @@
-ALTER TABLE project ADD COLUMN edit_code_required INTEGER NOT NULL DEFAULT 0;
