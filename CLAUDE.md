@@ -51,8 +51,15 @@ one. It requires the sibling checkout and macOS 15+.
 
 ## Consuming it
 
-- **Web:** import `dist/migrations.js` — `MIGRATIONS`, `migrate(db)`, `hasBeenSuperseded(db)`,
-  `unknownIdentifiers(db)`.
+This repo is **public** (`github:Mountain-View-Staging/MarqueeSchema`) so consumers can resolve
+it by URL without the sibling checkout. `package.json` exports `./migrations` → `dist/migrations.js`
+(dist is committed), and `files` ships `dist` + `schema`.
+
+- **Web:** depend on `"marquee-schema": "github:Mountain-View-Staging/MarqueeSchema"` and import
+  `marquee-schema/migrations` — `MIGRATIONS`, `migrate(db)`, `hasBeenSuperseded(db)`,
+  `unknownIdentifiers(db)`, `KNOWN_IDENTIFIERS`. pnpm pins the commit in the lockfile; run
+  `pnpm update marquee-schema` after pushing a schema change to pick it up (it no longer
+  auto-reflects like the old `link:` did).
 - **Swift:** `MarqueeStore.migrator` delegates to `MarqueeSchema.migrator` from the generated
   `MarqueeSchema.swift`. **Adopted 2026-07-23** — there is no inline migrator and no manual copy
   step: `npm run generate` writes the Swift file straight into
