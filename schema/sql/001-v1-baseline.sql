@@ -100,14 +100,19 @@ CREATE UNIQUE INDEX idx_media_file_optimized ON media_file (optimized_file_name)
 -- schedule_template diff) stay JSON-tolerant TEXT rather than fully relational —
 -- they are consumed opaquely by the renderer.
 CREATE TABLE session (
-  id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  name       TEXT    NOT NULL,
-  abstract   TEXT,
-  presenters TEXT,              -- JSON array
-  attributes TEXT,              -- JSON array (incl. time attributes / multi-room)
-  created    INTEGER NOT NULL,
-  updated    INTEGER NOT NULL
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  name        TEXT    NOT NULL,
+  abstract    TEXT,
+  presenters  TEXT,             -- JSON array
+  attributes  TEXT,             -- JSON array (vendor attributes; legacy producers may include time attributes)
+  source_id   TEXT,             -- vendor session id; NULL = manually authored
+  source_type TEXT,             -- provider discriminator, e.g. 'rainfocus' | 'spreadsheet'
+  source_name TEXT,             -- provider display name at import time
+  created     INTEGER NOT NULL,
+  updated     INTEGER NOT NULL
 );
+
+CREATE INDEX idx_session_source ON session (source_id);
 
 CREATE TABLE session_set (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,12 +122,16 @@ CREATE TABLE session_set (
   backing_item_id   INTEGER REFERENCES media_item(id) ON DELETE RESTRICT,
   logo_item_id      INTEGER REFERENCES media_item(id) ON DELETE RESTRICT,
   schedule_template TEXT,       -- JSON diff vs the Surface baseline; absent = baseline
+  source_id         TEXT,       -- vendor room id; NULL = manually authored set
+  source_name       TEXT,       -- vendor room display name at import time
   created           INTEGER NOT NULL,
   updated           INTEGER NOT NULL
 );
 
 -- A session's membership in a set, at a specific time window. session_time_id
--- distinguishes multiple time slots of the same session (multi-room).
+-- distinguishes multiple time slots of the same session (multi-room);
+-- source_room_id records which vendor room minted the slot so a multi-room
+-- sync can reconcile per room without pruning its siblings.
 CREATE TABLE session_set_entry (
   id              INTEGER PRIMARY KEY AUTOINCREMENT,
   session_set_id  INTEGER NOT NULL REFERENCES session_set(id) ON DELETE CASCADE,
@@ -130,11 +139,25 @@ CREATE TABLE session_set_entry (
   session_time_id TEXT,
   start_time      INTEGER NOT NULL,
   end_time        INTEGER NOT NULL,
+  source_room_id  TEXT,
+  room_name       TEXT,
   created         INTEGER NOT NULL,
   updated         INTEGER NOT NULL
 );
 
 CREATE INDEX idx_session_set_entry_set ON session_set_entry (session_set_id, start_time);
+
+-- Integration provider configuration (credentials, cached room catalog, sync
+-- bookkeeping) as an opaque JSON blob per provider. Authoring-side only: it
+-- travels with the project database so the team shares one configuration, and
+-- every cartridge kind drops this table before publishing.
+CREATE TABLE integration (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  provider TEXT    NOT NULL UNIQUE,
+  config   TEXT    NOT NULL DEFAULT '{}',   -- JSON object
+  created  INTEGER NOT NULL,
+  updated  INTEGER NOT NULL
+);
 
 CREATE TABLE playlist (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
