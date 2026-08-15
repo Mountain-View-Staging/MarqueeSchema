@@ -7,7 +7,7 @@
     {
       "identifier": "v1-baseline",
       "file": "sql/001-v1-baseline.sql",
-      "note": "The full Marquee project schema as a single baseline, flattened from the former v1..v14 append-only history (2026-07-23)."
+      "note": "The full Marquee project schema as a single baseline, flattened from the former v1..v14 append-only history (2026-07-23). Dev-mode edit 2026-08-15: sessions (session/session_set/session_set_entry), playlist_entry resource_type expansion to session sets, demo-slot playlist (SPEC-sqlite-cartridge-deployment)."
     }
   ]
 }

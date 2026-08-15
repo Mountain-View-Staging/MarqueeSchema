@@ -6,6 +6,12 @@
 -- trail was flattened into one baseline. Until an MVP client exists this file
 -- may be edited in place; once one ships, return to append-only (add v2-… etc.)
 -- rather than editing the baseline, so deployed databases can still migrate.
+--
+-- Dev-mode edit 2026-08-15 (SPEC-sqlite-cartridge-deployment, legacy Studio
+-- convergence): sessions join the schema (session / session_set /
+-- session_set_entry), playlist_entry generalizes to non-media resources via the
+-- forward-declared resource_type vocabulary, and the demo_station slot may
+-- carry a playlist (PIP content) alongside its branding.
 
 CREATE TABLE project (
   id                        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,6 +94,48 @@ CREATE INDEX idx_tag_assignment_tag    ON tag_assignment (tag_id, entity_type);
 
 CREATE UNIQUE INDEX idx_media_file_optimized ON media_file (optimized_file_name);
 
+-- Sessions: conference/agenda content rendered by the player (schedule boards,
+-- room signs). Imported from external integrations, so the variable shapes
+-- (presenters, attributes incl. multi-room time attributes, the layer-2
+-- schedule_template diff) stay JSON-tolerant TEXT rather than fully relational —
+-- they are consumed opaquely by the renderer.
+CREATE TABLE session (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  name       TEXT    NOT NULL,
+  abstract   TEXT,
+  presenters TEXT,              -- JSON array
+  attributes TEXT,              -- JSON array (incl. time attributes / multi-room)
+  created    INTEGER NOT NULL,
+  updated    INTEGER NOT NULL
+);
+
+CREATE TABLE session_set (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  name              TEXT    NOT NULL,
+  render_modes      TEXT    NOT NULL DEFAULT '["simple"]',   -- JSON array
+  duration          REAL    NOT NULL DEFAULT 8,              -- seconds per board page
+  backing_item_id   INTEGER REFERENCES media_item(id) ON DELETE RESTRICT,
+  logo_item_id      INTEGER REFERENCES media_item(id) ON DELETE RESTRICT,
+  schedule_template TEXT,       -- JSON diff vs the Surface baseline; absent = baseline
+  created           INTEGER NOT NULL,
+  updated           INTEGER NOT NULL
+);
+
+-- A session's membership in a set, at a specific time window. session_time_id
+-- distinguishes multiple time slots of the same session (multi-room).
+CREATE TABLE session_set_entry (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_set_id  INTEGER NOT NULL REFERENCES session_set(id) ON DELETE CASCADE,
+  session_id      INTEGER NOT NULL REFERENCES session(id)     ON DELETE RESTRICT,
+  session_time_id TEXT,
+  start_time      INTEGER NOT NULL,
+  end_time        INTEGER NOT NULL,
+  created         INTEGER NOT NULL,
+  updated         INTEGER NOT NULL
+);
+
+CREATE INDEX idx_session_set_entry_set ON session_set_entry (session_set_id, start_time);
+
 CREATE TABLE playlist (
   id                INTEGER PRIMARY KEY AUTOINCREMENT,
   name              TEXT    NOT NULL,
@@ -100,10 +148,15 @@ CREATE TABLE playlist (
   updated           INTEGER NOT NULL
 );
 
+-- An entry plays a resource; resource_type is the open-vocabulary discriminator
+-- (forward-declared in v7 of the pre-baseline history — "today only 'media_item'
+-- resolves"; 'session_set' is its first expansion, 2026-08-15). The implication
+-- CHECKs pin integrity for the known types without closing the vocabulary.
 CREATE TABLE playlist_entry (
   id                   INTEGER PRIMARY KEY AUTOINCREMENT,
-  playlist_id          INTEGER NOT NULL REFERENCES playlist(id)   ON DELETE CASCADE,
-  media_item_id        INTEGER NOT NULL REFERENCES media_item(id) ON DELETE RESTRICT,
+  playlist_id          INTEGER NOT NULL REFERENCES playlist(id) ON DELETE CASCADE,
+  media_item_id        INTEGER REFERENCES media_item(id)  ON DELETE RESTRICT,
+  session_set_id       INTEGER REFERENCES session_set(id) ON DELETE RESTRICT,
   position             INTEGER NOT NULL,
   created              INTEGER NOT NULL,
   updated              INTEGER NOT NULL,
@@ -111,7 +164,9 @@ CREATE TABLE playlist_entry (
   start_time_portrait  REAL,
   end_time_portrait    REAL,
   start_time_landscape REAL,
-  end_time_landscape   REAL
+  end_time_landscape   REAL,
+  CHECK (resource_type <> 'media_item'  OR media_item_id  IS NOT NULL),
+  CHECK (resource_type <> 'session_set' OR session_set_id IS NOT NULL)
 );
 
 CREATE INDEX idx_playlist_entry_order ON playlist_entry (playlist_id, position);
@@ -167,15 +222,15 @@ CREATE TABLE screen_schedule_entry (
   overlay_item_id    INTEGER REFERENCES media_item(id) ON DELETE RESTRICT,  -- demo branding (front)
   created            INTEGER NOT NULL,
   updated            INTEGER NOT NULL,
-  -- Playlist slots carry only a playlist; demo slots carry only branding,
-  -- and an overlay requires a background (background is required when branded;
-  -- both NULL = blank = exit demo mode).
+  -- Playlist slots carry only a playlist. Demo slots carry branding and MAY
+  -- carry a playlist (PIP content, rendered by the consumer at the opposite
+  -- orientation — 2026-08-15, SPEC-sqlite-cartridge-deployment D3); an overlay
+  -- still requires a background, and all-NULL = blank = exit demo mode.
   CHECK (
     ( slot IN ('portrait','landscape')
         AND background_item_id IS NULL AND overlay_item_id IS NULL )
     OR
     ( slot = 'demo_station'
-        AND playlist_id IS NULL
         AND ( background_item_id IS NOT NULL OR overlay_item_id IS NULL ) )
   )
 );
