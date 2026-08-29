@@ -1,5 +1,5 @@
 {
-  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. RESET 2026-07-23: the former v1..v14 append-only history was flattened into a single v1-baseline because nothing consumes these databases with a shipped MVP client yet. Until an MVP client exists, the baseline SQL may be edited in place. Once one ships, return to append-only — add v2-… etc., never edit the baseline — so deployed databases can still migrate.",
+  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. APPEND-ONLY IS BACK IN FORCE as of 2026-08-27 (v2): Surface clients are deployed and legacy-published shows are live, so the 2026-07-23 dev-mode window (baseline editable in place) is closed. Add v3-… etc.; never reorder, reuse an identifier, or edit a shipped migration's SQL — deployed databases record only identifiers.",
   "formatVersion": 1,
   "schemaName": "Marquee",
   "migrationTable": "grdb_migrations",
@@ -8,6 +8,11 @@
       "identifier": "v1-baseline",
       "file": "sql/001-v1-baseline.sql",
       "note": "The full Marquee project schema as a single baseline, flattened from the former v1..v14 append-only history (2026-07-23). Dev-mode edit 2026-08-15: sessions (session/session_set/session_set_entry), playlist_entry resource_type expansion to session sets, demo-slot playlist (SPEC-sqlite-cartridge-deployment)."
+    },
+    {
+      "identifier": "v2-media-variants",
+      "file": "sql/002-v2-media-variants.sql",
+      "note": "media_file_variant — MediaFile children (optimized/webOptimized/mask/extract/…), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
     }
   ]
 }
