@@ -81,3 +81,17 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
   [`MarqueeStudioWeb-Architecture.md`](../MarqueeStudio/MarqueeStudioWeb/Docs/MarqueeStudioWeb-Architecture.md).
 - Behavioural contracts (thumbnails, cartridge projection, UUID/hash conventions) still live in
   the architecture doc; move them here as they stabilise.
+
+## ⚠️ Third cartridge producer until the legacy studio retires (~Oct 2026)
+
+The LEGACY web studio (studio.mvsmarquee.com) publishes **client-side-generated v1-baseline
+SQLite cartridges** into the same `<CODE>/<FILE>.db` keyspace, via the Worker's
+`legacyPublish` route — and Surface consumes them indistinguishably from ours. It sits
+**outside** this repo's generated-migrator + equivalence-test net.
+
+**Any change to the CARTRIDGE schema (the per-type trimmed subset, not just the authoring
+schema) must include adjusting the legacy app's cartridge generator to stay conformant** —
+or a decision that legacy shows tolerate the skew. Dustin, 2026-08-31: the legacy app is
+being forced off its S3 dependency and onto the web studio within ~a month; delete this
+section when that migration lands. (The 2026-08 media-variant work deliberately left the
+cartridge schema untouched — that discipline is what has protected legacy so far.)
