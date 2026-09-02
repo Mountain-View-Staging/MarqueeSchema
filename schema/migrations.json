@@ -13,6 +13,11 @@
       "identifier": "v2-media-variants",
       "file": "sql/002-v2-media-variants.sql",
       "note": "media_file_variant — MediaFile children (optimized/webOptimized/mask/extract/…), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
+    },
+    {
+      "identifier": "v3-media-optimization",
+      "file": "sql/003-v3-media-optimization.sql",
+      "note": "media_optimization — the automatic optimizer's per-(file, kind) ledger: ready / not_needed / failed with the receipt, so \"already optimal\" is durable and nothing reprocesses; authoring db only, cartridge builders drop it. Additive."
     }
   ]
 }
