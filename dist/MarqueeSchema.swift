@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   6d91d0ec2450caec190e2f80bb857097725d1fbe552c666f0687c32f22fd9a67
+// Checksum:   c195477929882d05ea52aaaa7a48656b001a822be89a411019cacbcc02adba28
 
 import Foundation
 import GRDB
@@ -15,13 +15,14 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "6d91d0ec2450caec190e2f80bb857097725d1fbe552c666f0687c32f22fd9a67"
+    public static let checksum = "c195477929882d05ea52aaaa7a48656b001a822be89a411019cacbcc02adba28"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
         "v1-baseline",
         "v2-media-variants",
         "v3-media-optimization",
+        "v4-entry-playback-states",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -390,6 +391,44 @@ CREATE TABLE media_optimization (
 );
 
 CREATE UNIQUE INDEX idx_media_optimization_kind ON media_optimization (media_file_id, kind);
+"""#)
+        }
+        // playlist_entry gains loop_clip / pause_on_entry / pause_on_completion / disabled — the Studio playlist engine's per-entry states, resolved at the advance boundary. Studio-only (directives govern Surface entry visibility); additive and defaulted.
+        migrator.registerMigration("v4-entry-playback-states") { db in
+            try db.execute(sql: #"""
+-- v4-entry-playback-states
+-- Four per-entry playback states for the STUDIO's playlist engine, authored as
+-- icons on the Editor's rail rows:
+--
+--   loop_clip           when this entry becomes active it repeats instead of
+--                       passing through — the engine hands the SAME entry back
+--   pause_on_entry      the engine cues this entry and HOLDS rather than
+--                       playing it, so the operator can take it from preview
+--   pause_on_completion the engine holds at the END of this entry instead of
+--                       falling through to the next
+--   disabled            the engine skips this entry while looking for the next
+--                       playable one (an explicit Take still plays it once,
+--                       without clearing the flag — standby / "on call" content)
+--
+-- All four resolve at ONE point: when a duration completes and the engine is
+-- asked for the next entry. That is why entry and completion are the same
+-- question asked at a boundary ("hold here?" — yes if the outgoing entry says
+-- on-completion or the incoming says on-entry), and why precedence needs no
+-- rules: loop returns before the pause questions are asked, and disabled is
+-- consumed while searching for the next playable entry.
+--
+-- STUDIO-ONLY BY DESIGN. Entry visibility at a venue is a DIRECTIVE concern,
+-- so Surface neither reads nor needs these. They do ride along in screen
+-- cartridges, because `playlist_entry` is carried there — which is harmless:
+-- extra columns never break a reader, only missing ones do, and the legacy
+-- cartridge producer is unaffected because nothing consumes them.
+--
+-- Additive and defaulted, so either peer ships independently.
+
+ALTER TABLE playlist_entry ADD COLUMN loop_clip           INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE playlist_entry ADD COLUMN pause_on_entry      INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE playlist_entry ADD COLUMN pause_on_completion INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE playlist_entry ADD COLUMN disabled            INTEGER NOT NULL DEFAULT 0;
 """#)
         }
         return migrator
