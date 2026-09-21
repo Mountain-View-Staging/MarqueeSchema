@@ -28,6 +28,11 @@
       "identifier": "v5-brand-style",
       "file": "sql/005-v5-brand-style.sql",
       "note": "brand_style (portal address company/style/version, version pinned so a republish cannot silently restyle a signed-off show) + brand_style_item_id (the media_item holding this project's style.json) on project and session_set. Brand files travel as ordinary media because a player's media cache is a flat namespace whose prune deletes any directory the manifest does not name; the import rewrites style.json's file paths to deliverable names. Resolution: session_set ?? project ?? client default. Nullable, additive."
+    },
+    {
+      "identifier": "v6-brand-member",
+      "file": "sql/006-v6-brand-member.sql",
+      "note": "media_item.brand_member \u2014 the style address a media item belongs to, so the cartridge's reachable closure can seed brand files. Without it v5's reference resolves to media the publish drops: a typeface is referenced by no playlist or session set, only by name inside style.json, which the closure does not walk. A column rather than a tag because a tag is user-editable and removing one would silently drop the fonts. Nullable, additive, partial index."
     }
   ]
 }
