@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   c195477929882d05ea52aaaa7a48656b001a822be89a411019cacbcc02adba28
+// Checksum:   75540f2c4fe3c09f4266daf0b8ec9e1c2028db74fb0f58c18c43f18ce14fdfef
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "c195477929882d05ea52aaaa7a48656b001a822be89a411019cacbcc02adba28"
+    public static let checksum = "75540f2c4fe3c09f4266daf0b8ec9e1c2028db74fb0f58c18c43f18ce14fdfef"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -23,6 +23,7 @@ public enum MarqueeSchema {
         "v2-media-variants",
         "v3-media-optimization",
         "v4-entry-playback-states",
+        "v5-brand-style",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -429,6 +430,51 @@ ALTER TABLE playlist_entry ADD COLUMN loop_clip           INTEGER NOT NULL DEFAU
 ALTER TABLE playlist_entry ADD COLUMN pause_on_entry      INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE playlist_entry ADD COLUMN pause_on_completion INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE playlist_entry ADD COLUMN disabled            INTEGER NOT NULL DEFAULT 0;
+"""#)
+        }
+        // brand_style (portal address company/style/version, version pinned so a republish cannot silently restyle a signed-off show) + brand_style_item_id (the media_item holding this project's style.json) on project and session_set. Brand files travel as ordinary media because a player's media cache is a flat namespace whose prune deletes any directory the manifest does not name; the import rewrites style.json's file paths to deliverable names. Resolution: session_set ?? project ?? client default. Nullable, additive.
+        migrator.registerMigration("v5-brand-style") { db in
+            try db.execute(sql: #"""
+-- v5-brand-style
+-- Which style book a project — or one session set — is branded with.
+--
+-- Two columns per table, because they answer two different questions and
+-- collapsing them would lose one:
+--
+--   brand_style          PROVENANCE: "company/style/version" exactly as the
+--                        brand portal addresses it, e.g. "acme/acme-2026/3".
+--                        The VERSION is part of it deliberately. A published
+--                        version is immutable, so pinning one is what stops a
+--                        later republish silently restyling a show that was
+--                        signed off. It is also the only thing that can answer
+--                        "which boards does this agreement touch" when a
+--                        typeface licence lapses.
+--
+--   brand_style_item_id  RESOLUTION: the media_item holding this project's copy
+--                        of style.json. The player needs a FILE, and it has no
+--                        route from a portal address to one.
+--
+-- ⚠️ Why an item id rather than letting the player find the folder.
+--
+-- The delivered brand folder cannot survive a player's media cache: that cache
+-- is a flat namespace keyed by deliverable file name, and its prune removes
+-- every top-level entry the cartridge manifest does not list — a `brand/`
+-- directory included. So brand files travel as ORDINARY MEDIA like everything
+-- else, and the import rewrites style.json's `files` paths to the deliverable
+-- names they were given. Then a player resolves faces through the manifest it
+-- already holds, and the spec's folder stays what it was written to be: the
+-- producer's layout, for portal storage and for the import to read.
+--
+-- Resolution order is session_set ?? project ?? the client's built-in default,
+-- which is why both tables carry both columns.
+--
+-- Nullable and additive: every existing project and set is unbranded, which is
+-- what they are today, and either peer ships independently.
+
+ALTER TABLE project     ADD COLUMN brand_style         TEXT;
+ALTER TABLE project     ADD COLUMN brand_style_item_id INTEGER REFERENCES media_item(id) ON DELETE SET NULL;
+ALTER TABLE session_set ADD COLUMN brand_style         TEXT;
+ALTER TABLE session_set ADD COLUMN brand_style_item_id INTEGER REFERENCES media_item(id) ON DELETE SET NULL;
 """#)
         }
         return migrator

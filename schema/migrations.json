@@ -1,5 +1,5 @@
 {
-  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. APPEND-ONLY IS BACK IN FORCE as of 2026-08-27 (v2): Surface clients are deployed and legacy-published shows are live, so the 2026-07-23 dev-mode window (baseline editable in place) is closed. Add v3-… etc.; never reorder, reuse an identifier, or edit a shipped migration's SQL — deployed databases record only identifiers.",
+  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. APPEND-ONLY IS BACK IN FORCE as of 2026-08-27 (v2): Surface clients are deployed and legacy-published shows are live, so the 2026-07-23 dev-mode window (baseline editable in place) is closed. Add v3-\u2026 etc.; never reorder, reuse an identifier, or edit a shipped migration's SQL \u2014 deployed databases record only identifiers.",
   "formatVersion": 1,
   "schemaName": "Marquee",
   "migrationTable": "grdb_migrations",
@@ -12,17 +12,22 @@
     {
       "identifier": "v2-media-variants",
       "file": "sql/002-v2-media-variants.sql",
-      "note": "media_file_variant — MediaFile children (optimized/webOptimized/mask/extract/…), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
+      "note": "media_file_variant \u2014 MediaFile children (optimized/webOptimized/mask/extract/\u2026), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
     },
     {
       "identifier": "v3-media-optimization",
       "file": "sql/003-v3-media-optimization.sql",
-      "note": "media_optimization — the automatic optimizer's per-(file, kind) ledger: ready / not_needed / failed with the receipt, so \"already optimal\" is durable and nothing reprocesses; authoring db only, cartridge builders drop it. Additive."
+      "note": "media_optimization \u2014 the automatic optimizer's per-(file, kind) ledger: ready / not_needed / failed with the receipt, so \"already optimal\" is durable and nothing reprocesses; authoring db only, cartridge builders drop it. Additive."
     },
     {
       "identifier": "v4-entry-playback-states",
       "file": "sql/004-v4-entry-playback-states.sql",
-      "note": "playlist_entry gains loop_clip / pause_on_entry / pause_on_completion / disabled — the Studio playlist engine's per-entry states, resolved at the advance boundary. Studio-only (directives govern Surface entry visibility); additive and defaulted."
+      "note": "playlist_entry gains loop_clip / pause_on_entry / pause_on_completion / disabled \u2014 the Studio playlist engine's per-entry states, resolved at the advance boundary. Studio-only (directives govern Surface entry visibility); additive and defaulted."
+    },
+    {
+      "identifier": "v5-brand-style",
+      "file": "sql/005-v5-brand-style.sql",
+      "note": "brand_style (portal address company/style/version, version pinned so a republish cannot silently restyle a signed-off show) + brand_style_item_id (the media_item holding this project's style.json) on project and session_set. Brand files travel as ordinary media because a player's media cache is a flat namespace whose prune deletes any directory the manifest does not name; the import rewrites style.json's file paths to deliverable names. Resolution: session_set ?? project ?? client default. Nullable, additive."
     }
   ]
 }
