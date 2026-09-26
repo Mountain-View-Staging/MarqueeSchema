@@ -12,11 +12,17 @@
     refgen inspect <path>                        open a database, decode every record
                                                  type, emit JSON for the JS harness
     refgen publish <path> <configId> <out> <ts>  publish a surface cartridge
-    refgen publish-project <path> <out> <ts>     publish the project-only cartridge
+    refgen publish-project <path> <out> <ts>     publish the project cartridge
+    refgen read-cartridge <path>                 open a CARTRIDGE through the kit's
+                                                 reader (openCartridge / cartridgeMeta /
+                                                 mediaManifest), emit JSON
 
-  `inspect` is the round-trip proof: if GRDB opens a JS-authored file,
-  applies no migrations, and decodes every record, the desktop app opens
-  it too.
+  `inspect` is the round-trip proof for an AUTHORING database: if GRDB opens
+  a JS-authored file, applies no migrations, and decodes every record, the
+  desktop app opens it too. It is not for cartridges: a v25 cartridge is the
+  wire format, carries no `grdb_migrations`, and is never opened through the
+  migrator — `read-cartridge` is its counterpart, proving the kit's v25
+  reader path on a JS-written artifact.
 
   `publish` takes an explicit `generatedAt` (unix ms) so the JS peer can
   produce a comparable cartridge — otherwise the two differ by a timestamp
@@ -59,11 +65,21 @@ func appliedIdentifiers(_ path: String) throws -> [String] {
     }
 }
 
+/// What `read-cartridge` prints: the kit's view of a delivered artifact.
+struct CartridgeRead: Encodable {
+    var tables: [String]
+    var meta: CartridgeMeta?
+    var isV25: Bool?
+    var isProjectOnly: Bool?
+    var manifest: [ManifestEntry]
+}
+
 let usage = """
 usage: refgen create <path>
        refgen inspect <path>
        refgen publish <path> <configId> <out> <generatedAtMs>
        refgen publish-project <path> <out> <generatedAtMs>
+       refgen read-cartridge <path>
 """
 guard CommandLine.arguments.count >= 3 else {
     FileHandle.standardError.write(Data((usage + "\n").utf8))
@@ -198,6 +214,25 @@ case "publish-project":
         to: URL(fileURLWithPath: out),
         now: generatedAt)
     print("published project cartridge — \(result.mediaFileCount) file(s)")
+
+case "read-cartridge":
+    guard FileManager.default.fileExists(atPath: path) else {
+        FileHandle.standardError.write(Data("no such cartridge: \(path)\n".utf8))
+        exit(2)
+    }
+    // The consumer path: no migrator, the meta row keyed on format_version, the
+    // manifest as a device fetches it.
+    let store = try MarqueeStore.openCartridge(at: path)
+    let tables: [String] = try store.writer.read { db in
+        try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
+    }
+    let meta = try await store.cartridgeMeta()
+    let manifest = try await store.mediaManifest()
+    let read = CartridgeRead(
+        tables: tables, meta: meta, isV25: meta?.isV25, isProjectOnly: meta?.isProjectOnly, manifest: manifest)
+    let encoder = JSONEncoder()
+    encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+    print(String(data: try encoder.encode(read), encoding: .utf8)!)
 
 default:
     FileHandle.standardError.write(Data((usage + "\n").utf8))
