@@ -1,5 +1,5 @@
 {
-  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. APPEND-ONLY IS BACK IN FORCE as of 2026-08-27 (v2): Surface clients are deployed and legacy-published shows are live, so the 2026-07-23 dev-mode window (baseline editable in place) is closed. Add v3-\u2026 etc.; never reorder, reuse an identifier, or edit a shipped migration's SQL \u2014 deployed databases record only identifiers.",
+  "$comment": "SOURCE OF TRUTH for the Marquee project schema. Both MarqueeDataKit (Swift/GRDB) and MarqueeStudioWeb (JS/sql.js) generate from this file. Never hand-edit generated output in dist/. APPEND-ONLY IS BACK IN FORCE as of 2026-08-27 (v2): Surface clients are deployed and legacy-published shows are live, so the 2026-07-23 dev-mode window (baseline editable in place) is closed. Add v3-… etc.; never reorder, reuse an identifier, or edit a shipped migration's SQL — deployed databases record only identifiers.",
   "formatVersion": 1,
   "schemaName": "Marquee",
   "migrationTable": "grdb_migrations",
@@ -12,17 +12,17 @@
     {
       "identifier": "v2-media-variants",
       "file": "sql/002-v2-media-variants.sql",
-      "note": "media_file_variant \u2014 MediaFile children (optimized/webOptimized/mask/extract/\u2026), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
+      "note": "media_file_variant — MediaFile children (optimized/webOptimized/mask/extract/…), authoring db only; cartridge builders drop it and resolve one deliverable into the existing media_file columns, so the cartridge artifact schema is unchanged. First append-only migration since the baseline flatten."
     },
     {
       "identifier": "v3-media-optimization",
       "file": "sql/003-v3-media-optimization.sql",
-      "note": "media_optimization \u2014 the automatic optimizer's per-(file, kind) ledger: ready / not_needed / failed with the receipt, so \"already optimal\" is durable and nothing reprocesses; authoring db only, cartridge builders drop it. Additive."
+      "note": "media_optimization — the automatic optimizer's per-(file, kind) ledger: ready / not_needed / failed with the receipt, so \"already optimal\" is durable and nothing reprocesses; authoring db only, cartridge builders drop it. Additive."
     },
     {
       "identifier": "v4-entry-playback-states",
       "file": "sql/004-v4-entry-playback-states.sql",
-      "note": "playlist_entry gains loop_clip / pause_on_entry / pause_on_completion / disabled \u2014 the Studio playlist engine's per-entry states, resolved at the advance boundary. Studio-only (directives govern Surface entry visibility); additive and defaulted."
+      "note": "playlist_entry gains loop_clip / pause_on_entry / pause_on_completion / disabled — the Studio playlist engine's per-entry states, resolved at the advance boundary. Studio-only (directives govern Surface entry visibility); additive and defaulted."
     },
     {
       "identifier": "v5-brand-style",
@@ -32,12 +32,17 @@
     {
       "identifier": "v6-brand-member",
       "file": "sql/006-v6-brand-member.sql",
-      "note": "media_item.brand_member \u2014 the style address a media item belongs to, so the cartridge's reachable closure can seed brand files. Without it v5's reference resolves to media the publish drops: a typeface is referenced by no playlist or session set, only by name inside style.json, which the closure does not walk. A column rather than a tag because a tag is user-editable and removing one would silently drop the fonts. Nullable, additive, partial index."
+      "note": "media_item.brand_member — the style address a media item belongs to, so the cartridge's reachable closure can seed brand files. Without it v5's reference resolves to media the publish drops: a typeface is referenced by no playlist or session set, only by name inside style.json, which the closure does not walk. A column rather than a tag because a tag is user-editable and removing one would silently drop the fonts. Nullable, additive, partial index."
     },
     {
       "identifier": "v7-surface-author",
       "file": "sql/007-v7-surface-author.sql",
-      "note": "Studio Surface Author M1 (PRD 06 \u00a76.1; Reference \u00a72.4, STD-03, STD-04). screen_config / screen_location / screen_schedule_entry and screen_id take their surface_* names, with their two indexes rebuilt under surface names; project.backing_item_id (the default backing, RESTRICT) is added; playlist.backing_item_id / overlay_item_id, media_item.backing_item_id / overlay_item_id and playlist.shuffle are dropped. The four playlist_entry playback states and playlist.is_seamless_video stay: Studio Player state, never published. NOT additive \u2014 both peers ship it together; a v6 build opens a v7 show read-only via the supersession guard."
+      "note": "Studio Surface Author M1 (PRD 06 §6.1; Reference §2.4, STD-03, STD-04). screen_config / screen_location / screen_schedule_entry and screen_id take their surface_* names, with their two indexes rebuilt under surface names; project.backing_item_id (the default backing, RESTRICT) is added; playlist.backing_item_id / overlay_item_id, media_item.backing_item_id / overlay_item_id and playlist.shuffle are dropped. The four playlist_entry playback states and playlist.is_seamless_video stay: Studio Player state, never published. NOT additive — both peers ship it together; a v6 build opens a v7 show read-only via the supersession guard."
+    },
+    {
+      "identifier": "v8-published-revision",
+      "file": "sql/008-v8-published-revision.sql",
+      "note": "Studio Surface Author M1 (SCH-01, Reference §8.4/§15; STD-01 repair). project.published_revision — the per-show counter every project.db publish increments in the transaction that reads it and stamps into cartridge_meta.published_revision; surface cartridges keep surface_config.revision. Then the STD-01 repair: media_file.content_type and codec taken from the `original` rendition where the row differs (the pre-2026-09-26 optimized dual-write stamped the rendition's type; the importer named no codec). Rows with no original row are the backfill's, not this migration's. Additive and defaulted; either peer ships independently."
     }
   ]
 }

@@ -69,10 +69,21 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
 
 ## Status
 
-- **7 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v7-surface-author`. Both the Swift and JS migrators are generated from `schema/` here;
+- **8 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v8-published-revision`. Both the Swift and JS migrators are generated from `schema/` here;
   MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
   definition, not three.
+- **`v8-published-revision` (2026-09-26)** is additive: `project.published_revision`, the
+  per-show counter every `project.db` publish increments in the transaction that reads it and
+  stamps into `cartridge_meta` (SCH-01; surface cartridges keep `surface_config.revision`),
+  plus the STD-01 repair — `media_file.content_type` / `codec` taken from the `original`
+  rendition where the row differs. Rows with no `original` row are the backfill's
+  (`MediaService.backfillOriginalVariants`, the web's `ensureOriginalRenditions`), not the
+  migration's. **A migration's UPDATE must never be able to write NULL into a NOT NULL
+  column** — v8 COALESCEs, and its fixture row 5 (an original with no type) is why.
+  Rehearsed on copies of the four dev shows through BOTH migrators with identical results
+  (VP26 10 retyped + 21 codecs, WFCHI2026X 5, DF26DEV 2 + 2 unreachable, SESSDEV1 0;
+  `foreign_key_check` empty, `integrity_check` ok).
 - **`v7-surface-author` (2026-09-26) is the one NON-additive migration since the baseline**, by
   decision (PRD 06 §6.1, Reference §2.4): `screen_*` → `surface_*`, `project.backing_item_id`
   added, the per-slot backing/overlay columns and `playlist.shuffle` dropped. Both Studios took it
