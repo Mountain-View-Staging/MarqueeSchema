@@ -69,9 +69,23 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
 
 ## Status
 
-- **1 migration** — `v1-baseline` (the former v1..v14 flattened; see rule 2). Both the Swift and
-  JS migrators are generated from `schema/` here; MarqueeDataKit adopts the generated Swift
-  directly (see above), so there is one migrator definition, not three.
+- **7 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v7-surface-author`. Both the Swift and JS migrators are generated from `schema/` here;
+  MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
+  definition, not three.
+- **`v7-surface-author` (2026-09-26) is the one NON-additive migration since the baseline**, by
+  decision (PRD 06 §6.1, Reference §2.4): `screen_*` → `surface_*`, `project.backing_item_id`
+  added, the per-slot backing/overlay columns and `playlist.shuffle` dropped. Both Studios took it
+  in one session; a v6 build opens a v7 show read-only through the supersession guard, and a v7
+  build cannot open a v6 show for writing until it migrates it — which either Studio does on open.
+  ⚠️ **Apple's system SQLite defaults `legacy_alter_table` ON**, and GRDB runs migrations with
+  foreign keys off, so `ALTER TABLE … RENAME TO` there does NOT rewrite other tables' REFERENCES
+  clauses (measured: a renamed `surface_location` kept `REFERENCES screen_config(id)`). v7
+  therefore rebuilds the two child tables instead of renaming them. Any future rename of a
+  table that others reference must do the same.
+  Cartridges published from a v7 show carry `surface_*` tables, which the pre-v25 Surfaces
+  (reading `screen_*` through MarqueeDataKit) cannot open — the intended v25 break; the Surface
+  work restores playback through the engine's Loader.
 - **File compatibility proven both directions** (`npm run roundtrip`, 31 checks): JS-authored
   databases open in GRDB with zero migrations run, and JS mutations to a Swift-authored
   database survive a GRDB reopen intact.
@@ -91,7 +105,9 @@ SQLite cartridges** into the same `<CODE>/<FILE>.db` keyspace, via the Worker's
 
 **Any change to the CARTRIDGE schema (the per-type trimmed subset, not just the authoring
 schema) must include adjusting the legacy app's cartridge generator to stay conformant** —
-or a decision that legacy shows tolerate the skew. Dustin, 2026-08-31: the legacy app is
+or a decision that legacy shows tolerate the skew. **v7 took the second road (2026-09-26):**
+the legacy generator keeps writing `screen_*` cartridges, which is what the pre-v25 Surfaces
+its two live shows run on read; it is frozen until the conference ends and retires with it. Dustin, 2026-08-31: the legacy app is
 being forced off its S3 dependency and onto the web studio within ~a month; delete this
 section when that migration lands. (The 2026-08 media-variant work deliberately left the
 cartridge schema untouched — that discipline is what has protected legacy so far.)

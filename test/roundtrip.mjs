@@ -11,7 +11,7 @@
             and decodes every record type.
   Phase B — Swift authors a project; JS opens it, mutates it (media
             files, items, a playlist with entries and a directive, a
-            screen with a location and a schedule entry, tags, project
+            surface with a location and a schedule entry, tags, project
             days), exports; Swift reopens and sees exactly those changes.
 
   Passing both means the two implementations can hand the same file back
@@ -174,8 +174,8 @@ loaded.run(
 )
 
 loaded.run(
-  `INSERT INTO playlist (name, shuffle, is_seamless_video, archived, created, updated)
-   VALUES ('Lobby Loop', 0, 0, 0, ?, ?)`,
+  `INSERT INTO playlist (name, is_seamless_video, archived, created, updated)
+   VALUES ('Lobby Loop', 0, 0, ?, ?)`,
   [NOW, NOW]
 )
 loaded.run(
@@ -196,17 +196,17 @@ loaded.run(
 )
 
 loaded.run(
-  `INSERT INTO screen_config (name, revision, archived, screen_id, created, updated)
+  `INSERT INTO surface_config (name, revision, archived, surface_id, created, updated)
    VALUES ('Lobby', 1, 0, 'LBY', ?, ?)`,
   [NOW, NOW]
 )
 loaded.run(
-  `INSERT INTO screen_location (config_id, location_id, orientation, label, created, updated)
+  `INSERT INTO surface_location (config_id, location_id, orientation, label, created, updated)
    VALUES (1, 'LOBBY-01', 'landscape', 'North wall', ?, ?)`,
   [NOW, NOW]
 )
 loaded.run(
-  `INSERT INTO screen_schedule_entry (config_id, slot, timestamp, playlist_id, created, updated)
+  `INSERT INTO surface_schedule_entry (config_id, slot, timestamp, playlist_id, created, updated)
    VALUES (1, 'landscape', ?, 1, ?, ?)`,
   [NOW, NOW, NOW]
 )
@@ -261,8 +261,8 @@ if (b) {
   check('1 playlist decoded', b.playlists === 1, `got ${b.playlists}`)
   check('2 playlist entries decoded', b.playlistEntries === 2, `got ${b.playlistEntries}`)
   check('1 directive decoded', b.directives === 1, `got ${b.directives}`)
-  check('1 screen config decoded', b.screenConfigs === 1, `got ${b.screenConfigs}`)
-  check('1 screen location decoded', b.screenLocations === 1, `got ${b.screenLocations}`)
+  check('1 surface config decoded', b.surfaceConfigs === 1, `got ${b.surfaceConfigs}`)
+  check('1 surface location decoded', b.surfaceLocations === 1, `got ${b.surfaceLocations}`)
   check('1 schedule entry decoded', b.scheduleEntries === 1, `got ${b.scheduleEntries}`)
   check('1 tag decoded', b.tags === 1, `got ${b.tags}`)
   check('1 project day decoded', b.projectDays === 1, `got ${b.projectDays}`)

@@ -11,7 +11,7 @@
     refgen create  <path>                        build a reference database via GRDB
     refgen inspect <path>                        open a database, decode every record
                                                  type, emit JSON for the JS harness
-    refgen publish <path> <configId> <out> <ts>  publish a screen cartridge
+    refgen publish <path> <configId> <out> <ts>  publish a surface cartridge
     refgen publish-project <path> <out> <ts>     publish the project-only cartridge
 
   `inspect` is the round-trip proof: if GRDB opens a JS-authored file,
@@ -42,8 +42,8 @@ struct Summary: Encodable {
     var playlists: Int
     var playlistEntries: Int
     var directives: Int
-    var screenConfigs: Int
-    var screenLocations: Int
+    var surfaceConfigs: Int
+    var surfaceLocations: Int
     var scheduleEntries: Int
     var tags: Int
     var mediaFileNames: [String]
@@ -109,8 +109,8 @@ case "inspect":
 
     // Each of these decodes rows into the app's record types. A column the JS
     // peer got wrong — name, type, nullability — surfaces here as a decode error.
-    // A published cartridge carries only the tables it uses (a screen cartridge
-    // has no tags; project.db has no screens/playlists/directives/tags), so the
+    // A published cartridge carries only the tables it uses (a surface cartridge
+    // has no tags; project.db has no surfaces/playlists/directives/tags), so the
     // optional tables are decoded only when present — the decode check still runs
     // wherever a table exists, and a full authoring DB has them all.
     let existingTables: Set<String> = try await store.writer.read { db in
@@ -120,8 +120,8 @@ case "inspect":
     let items = try await service.listItems(includeArchived: true)
     let playlists = existingTables.contains("playlist")
         ? try await store.playlists(includeArchived: true) : []
-    let screens = existingTables.contains("screen_config")
-        ? try await store.screenConfigs(includeArchived: true) : []
+    let surfaces = existingTables.contains("surface_config")
+        ? try await store.surfaceConfigs(includeArchived: true) : []
     let tags = existingTables.contains("tag") ? try await store.allTags() : []
 
     var entryCount = 0
@@ -138,9 +138,9 @@ case "inspect":
 
     var locationCount = 0
     var scheduleCount = 0
-    for screen in screens {
-        guard let id = screen.id else { continue }
-        locationCount += try await store.screenLocations(inConfig: id).count
+    for surface in surfaces {
+        guard let id = surface.id else { continue }
+        locationCount += try await store.surfaceLocations(inConfig: id).count
         scheduleCount += try await store.scheduleEntries(inConfig: id).count
     }
 
@@ -157,8 +157,8 @@ case "inspect":
         playlists: playlists.count,
         playlistEntries: entryCount,
         directives: directiveCount,
-        screenConfigs: screens.count,
-        screenLocations: locationCount,
+        surfaceConfigs: surfaces.count,
+        surfaceLocations: locationCount,
         scheduleEntries: scheduleCount,
         tags: tags.count,
         mediaFileNames: files.map(\.sourceFileName).sorted(),
@@ -183,7 +183,7 @@ case "publish":
         configId: configId,
         to: URL(fileURLWithPath: out),
         now: generatedAt)
-    print("published \(result.screenId) rev \(result.publishedRevision) — \(result.mediaFileCount) file(s)")
+    print("published \(result.surfaceId) rev \(result.publishedRevision) — \(result.mediaFileCount) file(s)")
 
 case "publish-project":
     guard CommandLine.arguments.count >= 5,

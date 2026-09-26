@@ -33,6 +33,11 @@
       "identifier": "v6-brand-member",
       "file": "sql/006-v6-brand-member.sql",
       "note": "media_item.brand_member \u2014 the style address a media item belongs to, so the cartridge's reachable closure can seed brand files. Without it v5's reference resolves to media the publish drops: a typeface is referenced by no playlist or session set, only by name inside style.json, which the closure does not walk. A column rather than a tag because a tag is user-editable and removing one would silently drop the fonts. Nullable, additive, partial index."
+    },
+    {
+      "identifier": "v7-surface-author",
+      "file": "sql/007-v7-surface-author.sql",
+      "note": "Studio Surface Author M1 (PRD 06 \u00a76.1; Reference \u00a72.4, STD-03, STD-04). screen_config / screen_location / screen_schedule_entry and screen_id take their surface_* names, with their two indexes rebuilt under surface names; project.backing_item_id (the default backing, RESTRICT) is added; playlist.backing_item_id / overlay_item_id, media_item.backing_item_id / overlay_item_id and playlist.shuffle are dropped. The four playlist_entry playback states and playlist.is_seamless_video stay: Studio Player state, never published. NOT additive \u2014 both peers ship it together; a v6 build opens a v7 show read-only via the supersession guard."
     }
   ]
 }

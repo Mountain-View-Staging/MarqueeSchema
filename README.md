@@ -40,7 +40,7 @@ can hand the same file back and forth:
 - **Phase A** — JS authors a project from scratch with sql.js + `dist/migrations.js`;
   GRDB opens it, applies **no** migrations, and decodes every record type.
 - **Phase B** — Swift authors a project; JS opens it and adds media files, items, a
-  playlist with entries and a directive, a screen with a location and a schedule
+  playlist with entries and a directive, a surface with a location and a schedule
   entry, tags, and a project day; Swift reopens and sees exactly those rows. Runs with
   `PRAGMA foreign_keys = ON`, and asserts that the `media_item` CHECK and FK `RESTRICT`
   guards both fire.
@@ -52,8 +52,8 @@ can hand the same file back and forth:
 
 1. Add `schema/sql/0NN-vN-name.sql`.
 2. Append an entry to `schema/migrations.json`.
-3. `npm run generate`.
-4. Copy `dist/MarqueeSchema.swift` into MarqueeDataKit, `npm run reference`, `npm test`.
+3. `npm run generate` (it also writes the Swift migrator into the sibling MarqueeDataKit checkout).
+4. `npm run reference`, then `npm test` and `npm run roundtrip`.
 5. Commit `schema/`, `dist/`, and the refreshed fixture together.
 
 ### Rules
@@ -69,7 +69,16 @@ detect an edit to already-applied SQL. That failure has already happened once �
 record type encodes, so an older peer opening a newer database preserves columns it does not
 know about. That is what lets the two apps ship independently. Requiring a coordinated
 release: `NOT NULL` without a default, renames, type changes, dropped columns, and new
-tables an old peer must populate to keep an invariant true.
+tables an old peer must populate to keep an invariant true. `v7-surface-author` (2026-09-26)
+is the one such release so far — renames and drops, both Studios in one session.
+
+**Renaming a table that other tables reference: rebuild the children.** Apple's system
+SQLite — the one GRDB links — defaults `PRAGMA legacy_alter_table` ON, and both migrators run
+with foreign keys off, so `ALTER TABLE … RENAME TO` leaves the other tables' `REFERENCES`
+clauses pointing at the old name (measured on 3.54.0: a renamed `surface_location` still
+declared `REFERENCES screen_config(id)`, and every later insert would have failed). sql.js
+rewrites them. `v7` creates the two child tables fresh, copies the rows with their ids, and
+drops the old ones; do the same.
 
 **Check for supersession.** Neither GRDB's `migrate()` nor `dist/migrations.js` errors when
 a database carries unknown identifiers — both proceed silently. Callers must check
