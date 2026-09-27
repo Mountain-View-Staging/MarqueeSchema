@@ -43,6 +43,11 @@
       "identifier": "v8-published-revision",
       "file": "sql/008-v8-published-revision.sql",
       "note": "Studio Surface Author M1 (SCH-01, Reference §8.4/§15; STD-01 repair). project.published_revision — the per-show counter every project.db publish increments in the transaction that reads it and stamps into cartridge_meta.published_revision; surface cartridges keep surface_config.revision. Then the STD-01 repair: media_file.content_type and codec taken from the `original` rendition where the row differs (the pre-2026-09-26 optimized dual-write stamped the rendition's type; the importer named no codec). Rows with no original row are the backfill's, not this migration's. Additive and defaulted; either peer ships independently."
+    },
+    {
+      "identifier": "v9-surface-status",
+      "file": "sql/009-v9-surface-status.sql",
+      "note": "Studio Delivery M2 (PRD 07 §5.6 F-06, §6.1, §6.4). surface_status — one row per location, the latest Surface status Studio holds for it, whichever path it came by (lan / cache / cloud): the device's lastUpdate, Studio's received_at, the committed cartridge's revision and generated_at, media held / total / missing / failed, the entry and set on screen, the last issue, app version and platform. location_id is the PRIMARY KEY and references surface_location(location_id) ON DELETE CASCADE (§6.4). surface_location.last_checked_at and last_pulled_revision move into it as path 'lan' rows and are dropped. Authoring only, never published. NOT additive for an older writer (its location record names the dropped columns) — both peers take it together; a v8 build opens a v9 show read-only via the supersession guard."
     }
   ]
 }

@@ -69,10 +69,27 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
 
 ## Status
 
-- **8 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v8-published-revision`. Both the Swift and JS migrators are generated from `schema/` here;
+- **9 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v9-surface-status`. Both the Swift and JS migrators are generated from `schema/` here;
   MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
   definition, not three.
+- **`v9-surface-status` (2026-09-26, Studio Delivery M2)** adds `surface_status` — one row
+  per location, the latest status a Studio holds for it whichever path it came by (`path`:
+  `lan` / `cache` / `cloud`), reading the Surface App PRD §5.8 `SurfaceStatus` column for
+  column plus Studio's `received_at` — with `location_id` as PRIMARY KEY referencing
+  `surface_location(location_id)` **ON DELETE CASCADE** (Delivery PRD §6.4, so a deleted
+  location takes its row on either peer with no code). `surface_location.last_checked_at` /
+  `last_pulled_revision` MOVE into it: each recorded check-in becomes a path-`lan` row (both
+  clocks the check-in time, the pulled revision, no `source` — a check-in never named one),
+  then the two columns are dropped. Authoring only, never published (both writers whitelist
+  their tables). **Not additive for an older writer**: a v8 record names the dropped columns
+  in its INSERT/UPDATE, so both peers take v9 together and a v8 build opens a v9 show
+  read-only. The merge rule (newest `last_update` wins; a bare check-in never outranks a
+  report) is the stores', not the schema's: `MarqueeStore+SurfaceStatus.swift` and the
+  web's `surfaceStatusRepo.js`. Rehearsed on copies of the four dev shows through BOTH
+  migrators with identical facts: DF26DEV v4→v9, SESSDEV1 and WFCHI2026X v6→v9, no
+  check-ins to carry; VP26 v6→v9, its one check-in (`VT1-P`, `VT1`, 2026-09-25, pulled
+  rev 2) carried as a `lan` row; `foreign_key_check` empty, `integrity_check` ok on each.
 - **`v8-published-revision` (2026-09-26)** is additive: `project.published_revision`, the
   per-show counter every `project.db` publish increments in the transaction that reads it and
   stamps into `cartridge_meta` (SCH-01; surface cartridges keep `surface_config.revision`),
