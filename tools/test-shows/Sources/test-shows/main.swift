@@ -2,6 +2,7 @@
 //  main.swift — test-shows: generate and verify the generic test shows.
 //
 //    test-shows build  <marquee-test-shows checkout>   regenerate shows/ and legacy/, write the locks
+//    test-shows legacy <marquee-test-shows checkout>   regenerate legacy/ alone (the shows untouched)
 //    test-shows verify <marquee-test-shows checkout>   the Swift checks (see Verify.swift)
 //
 //  `build` deletes and rewrites only what it owns: shows/RIG26, shows/EDIT26 and the
@@ -14,6 +15,7 @@ import Foundation
 setbuf(stdout, nil)
 let usage = """
 usage: test-shows build  <path to the marquee-test-shows checkout>
+       test-shows legacy <path to the marquee-test-shows checkout>
        test-shows verify <path to the marquee-test-shows checkout>
 """
 let arguments = CommandLine.arguments
@@ -54,6 +56,14 @@ do {
         let lock = try Lock.write(folder: legacy, label: "legacy", scope: ".db")
         print("legacy: \(artifacts.joined(separator: ", ")) — \(lock.files.count) files locked")
         print(String(format: "built in %.0f s", Date().timeIntervalSince(started)))
+    case "legacy":
+        let legacy = repo.appendingPathComponent("legacy", isDirectory: true)
+        for name in ["pre-v25-surface.db", "pre-v25-project.db", Lock.fileName] {
+            try? FileManager.default.removeItem(at: legacy.appendingPathComponent(name))
+        }
+        let artifacts = try Legacy.build(into: legacy)
+        let lock = try Lock.write(folder: legacy, label: "legacy", scope: ".db")
+        print("legacy: \(artifacts.joined(separator: ", ")) — \(lock.files.count) files locked")
     case "verify":
         for line in try await Verify.run(repo: repo) { print(line) }
         print("verify: every check passed")

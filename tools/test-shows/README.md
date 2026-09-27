@@ -13,6 +13,7 @@ binary media included, but it cannot know what you meant.
 cd tools/test-shows
 swift build -c release
 .build/release/test-shows build  ../../../MarqueeTestShows     # regenerate shows/ and legacy/ (~40 s)
+.build/release/test-shows legacy ../../../MarqueeTestShows     # legacy/ alone, the shows untouched
 .build/release/test-shows verify ../../../MarqueeTestShows     # the Swift checks
 node --no-warnings verify-web.mjs ../../../MarqueeTestShows      # the web data layer's checks
 ```

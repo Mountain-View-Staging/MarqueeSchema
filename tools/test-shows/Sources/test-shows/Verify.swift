@@ -40,6 +40,8 @@ enum Verify {
             defer { try? FileManager.default.removeItem(at: tmp) }
             let copy = tmp.appendingPathComponent("Marquee.db")
             try FileManager.default.copyItem(at: root.appendingPathComponent(ProjectFactory.databaseSubpath), to: copy)
+            // A copy keeps the source's mode, and scripts/lock.sh makes the source read-only.
+            try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: copy.path)
             let probe = try DatabaseQueue(path: copy.path)
             let before = try await probe.read { db in
                 try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid")

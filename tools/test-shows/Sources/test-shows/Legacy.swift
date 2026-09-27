@@ -19,6 +19,18 @@ import GRDB
 import MarqueeDataKit
 
 enum Legacy {
+    /// `sql` without its `--` comments (the DDL has no string literal containing "--"),
+    /// and without the blank lines they leave.
+    static func uncommented(_ sql: String) -> String {
+        sql.split(separator: "\n", omittingEmptySubsequences: false)
+            .map { line -> String in
+                guard let range = line.range(of: "--") else { return String(line) }
+                return String(line[..<range.lowerBound]).replacingOccurrences(of: "\\s+$", with: "", options: .regularExpression)
+            }
+            .filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty }
+            .joined(separator: "\n")
+    }
+
     static let stamp = Venue.utc("2025-09-01T12:00:00Z")
     static let zone = "America/New_York"
 
@@ -43,12 +55,32 @@ enum Legacy {
 
     private static func write(_ url: URL, keep: Set<String>, surfaceCartridge: Bool) throws {
         try? FileManager.default.removeItem(at: url)
+        // The schema as the migrator left it at v2 — built in memory, then replayed into the
+        // file statement by statement with the SQL comments taken out: the DDL is the old
+        // shape, and the baseline's comments name internal design documents that have no
+        // place in a public file.
+        let template = try DatabaseQueue()
+        try MarqueeSchema.migrator.migrate(template, upTo: "v2-media-variants")
+        let (statements, identifiers) = try template.read { db -> ([String], [String]) in
+            let ddl = try String.fetchAll(db, sql: """
+                SELECT sql FROM sqlite_master
+                WHERE sql IS NOT NULL AND name NOT LIKE 'sqlite_%'
+                ORDER BY CASE type WHEN 'table' THEN 0 ELSE 1 END, rowid
+                """)
+            let ids = try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations ORDER BY rowid")
+            return (ddl, ids)
+        }
         // Foreign keys off, as the migrator runs: the tables a cartridge does not carry are
         // dropped below in no particular order.
         var configuration = Configuration()
         configuration.foreignKeysEnabled = false
         let queue = try DatabaseQueue(path: url.path, configuration: configuration)
-        try MarqueeSchema.migrator.migrate(queue, upTo: "v2-media-variants")
+        try queue.write { db in
+            for statement in statements { try db.execute(sql: Legacy.uncommented(statement)) }
+            for identifier in identifiers {
+                try db.execute(sql: "INSERT INTO grdb_migrations (identifier) VALUES (?)", arguments: [identifier])
+            }
+        }
         let t = stamp
         let dayStart = Venue.instant("2025-09-10", hour: 0, minute: 0, zone: TimeZone(identifier: zone)!)
         try queue.write { db in
