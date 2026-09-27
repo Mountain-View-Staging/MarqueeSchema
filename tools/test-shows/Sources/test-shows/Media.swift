@@ -5,9 +5,11 @@
 //  Tests/ConformanceReplay MediaFactory.swift) and as "frame NNN · SS.SS s" (the Studio
 //  harness's OCR, MarqueeStudioWeb tools/fixtures/make-editor-fixture.swift).
 //
-//  Nothing here is read from anywhere: every pixel is drawn. Text is drawn with the system
-//  UI font into the pixels; no font file is shipped. Colours come from a fixed table, so a
-//  file looks the same on every run (an encoder's own run-to-run variation aside).
+//  Nothing here is read from anywhere: every pixel is drawn. Text is drawn into the pixels
+//  with the system UI font — except the style book's assets, which are drawn in the style's
+//  own faces (Inter 4.1, registered from the generator's Resources; ExampleStyle.swift).
+//  Colours come from a fixed table, so a file looks the same on every run (an encoder's own
+//  run-to-run variation aside).
 //
 
 import Foundation
@@ -68,6 +70,43 @@ enum Draw {
         ctx.textPosition = CGPoint(x: center.x - bounds.width / 2 - bounds.minX,
                                    y: center.y - bounds.height / 2 - bounds.minY)
         CTLineDraw(line, ctx)
+    }
+
+    /// `#RRGGBB` → an sRGB colour.
+    static func hex(_ hex: String, _ alpha: CGFloat = 1) -> CGColor {
+        let n = Int(hex.dropFirst(), radix: 16) ?? 0
+        return rgb(CGFloat((n >> 16) & 255) / 255, CGFloat((n >> 8) & 255) / 255, CGFloat(n & 255) / 255, alpha)
+    }
+
+    /// `text` centred on `center` in the face whose PostScript name is `face`, `size` points.
+    ///
+    /// The face must be registered and must resolve to ITSELF: CoreText answers an unknown
+    /// name with Helvetica rather than failing (brand spec §3.1), and a brand asset drawn in
+    /// the wrong face says nothing — so this refuses instead of drawing.
+    static func text(_ text: String, in ctx: CGContext, center: CGPoint, size: CGFloat,
+                     color fill: CGColor, face: String) throws {
+        let font = CTFontCreateWithName(face as CFString, size, nil)
+        let resolved = CTFontCopyPostScriptName(font) as String
+        guard resolved == face else {
+            throw GenError.check("the face \(face) is not registered — CoreText answered with \(resolved)")
+        }
+        let attributes: [NSAttributedString.Key: Any] = [
+            NSAttributedString.Key(kCTFontAttributeName as String): font,
+            NSAttributedString.Key(kCTForegroundColorAttributeName as String): fill,
+        ]
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+        let bounds = CTLineGetBoundsWithOptions(line, .useOpticalBounds)
+        ctx.textPosition = CGPoint(x: center.x - bounds.width / 2 - bounds.minX,
+                                   y: center.y - bounds.height / 2 - bounds.minY)
+        CTLineDraw(line, ctx)
+    }
+
+    /// The optical width of `text` in `face` at `size` points.
+    static func width(_ text: String, face: String, size: CGFloat) -> CGFloat {
+        let font = CTFontCreateWithName(face as CFString, size, nil)
+        let line = CTLineCreateWithAttributedString(NSAttributedString(
+            string: text, attributes: [NSAttributedString.Key(kCTFontAttributeName as String): font]))
+        return CTLineGetBoundsWithOptions(line, .useOpticalBounds).width
     }
 
     /// Title-safe (90 %) rectangle, a centre cross and a TOP marker: the orientation and

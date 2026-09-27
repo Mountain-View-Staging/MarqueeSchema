@@ -14,6 +14,7 @@
 //  every file; `media.lock.json` records what was generated.
 //
 
+import CoreGraphics
 import Foundation
 import GRDB
 import MarqueeDataKit
@@ -107,20 +108,30 @@ final class Author {
         let image = spec.hasAlpha ? rendered : Stills.opaque(rendered)
         let source = staging.appendingPathComponent(spec.file)
         try Stills.write(image, as: format, to: source, quality: quality)
+        return try await importStill(source, image: image, hasAlpha: spec.hasAlpha, renditions: renditions)
+    }
+
+    /// Imports a still that is already a file — `source`, whose pixels are `image` — and adds
+    /// the renditions. BRAND26 imports its style book's assets this way, so the original in the
+    /// show is the portal's file byte for byte.
+    @discardableResult
+    func importStill(_ source: URL, image: CGImage, hasAlpha: Bool,
+                     renditions: [StillRendition]) async throws -> MediaFile {
+        let stem = source.lastPathComponent
         let file = try await importOriginal(source)
         var made: [MediaFileVariant] = []
         for rendition in renditions {
             switch rendition {
             case .optimized:
-                let url = staging.appendingPathComponent("opt-\(spec.file).heic")
+                let url = staging.appendingPathComponent("opt-\(stem).heic")
                 try Stills.write(image, as: .heic, to: url, quality: 0.72)
                 made.append(try await addRendition(url, kind: .optimized, of: file, type: Stills.Format.heic.mime,
                                                    width: image.width, height: image.height, codec: "HEIC",
                                                    recipe: "generated → HEIC q0.72"))
             case .web:
                 let small = Stills.fitted(image, longEdge: 1920)
-                let format: Stills.Format = spec.hasAlpha ? .png : .jpeg
-                let url = staging.appendingPathComponent("web-\(spec.file).\(format.ext)")
+                let format: Stills.Format = hasAlpha ? .png : .jpeg
+                let url = staging.appendingPathComponent("web-\(stem).\(format.ext)")
                 try Stills.write(small, as: format, to: url, quality: 0.8)
                 made.append(try await addRendition(url, kind: .webOptimized, of: file, type: format.mime,
                                                    width: small.width, height: small.height, codec: format.codec,

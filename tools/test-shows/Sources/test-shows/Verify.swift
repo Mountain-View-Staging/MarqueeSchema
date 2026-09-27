@@ -11,7 +11,9 @@
 //    - filesForLanes on the portrait-only config returns its portrait lane's files and not
 //      one landscape-only file;
 //    - the pre-v25 artifacts are refused with their codes;
-//    - every lock file matches its folder.
+//    - every lock file matches its folder;
+//    - the style book and BRAND26: brand spec §9's producer items measured again from the
+//      published files, and the branded show read back through the kit (VerifyBrand.swift).
 //
 
 import Foundation
@@ -170,6 +172,11 @@ enum Verify {
         }
         let legacyProblems = try Lock.verify(folder: legacy)
         check(legacyProblems.isEmpty, "legacy: lock: \(legacyProblems.joined(separator: "; "))")
+
+        // ── the style book and BRAND26 (VerifyBrand.swift) ──
+        let brand = try await VerifyBrand.run(repo: repo)
+        lines += brand.lines
+        failures += brand.failures
 
         if !failures.isEmpty {
             throw Failure(description: (["VERIFY FAILED:"] + failures.map { "  ✗ " + $0 }).joined(separator: "\n"))
