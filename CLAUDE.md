@@ -69,10 +69,27 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
 
 ## Status
 
-- **10 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v10-surface-status-fields`. Both the Swift and JS migrators are generated from `schema/` here;
+- **11 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v11-device-orientation`. Both the Swift and JS migrators are generated from `schema/` here;
   MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
   definition, not three.
+- **`v11-device-orientation` (2026-09-27, ORI-02)** — a device's orientation is the device's
+  (plan D-r2-24, Reference §15; PRDs 06 §5.7 and 07 §5.7 amended). `surface_location.orientation`
+  (the mount, NOT NULL) is dropped: a Surface renders Automatic, or Landscape / Portrait set on
+  the device, and the Cartridge Specification retired the column (`9285b01`; a Loader ignores it
+  in a cartridge that still has it), so both writers stop emitting it. `surface_status` gains
+  `orientation` (TEXT, nullable, `portrait` | `landscape`) — what a Surface reports it renders
+  (NetworkKit `SurfaceStatus.orientation`, `6729aeb`), which is where the Dashboard reads it;
+  a bare check-in never touches it. **No data moves**: a mount is not a report. **Not additive
+  for an older writer** — a v10 location record names the dropped column in its INSERT and
+  UPDATE — so both peers take v11 together and a v10 build opens a v11 show read-only. The
+  column was not indexed (`idx_surface_location_config` is `config_id` alone), so DROP COLUMN
+  is legal; the rows keep their ids and `surface_status` keeps its CASCADE reference.
+  Rehearsed on copies of the four dev shows through BOTH migrators, the full `.dump`
+  identical between them on each: DF26DEV v4→v11, SESSDEV1 v6→v11 (no locations), VP26
+  v6→v11 (VT1-P, VT2-L, VT3-L keep ids and labels; the carried VT1-P check-in intact, its
+  `orientation` NULL), WFCHI2026X v10→v11 (LBY1); `foreign_key_check` empty,
+  `integrity_check` ok on each.
 - **`v10-surface-status-fields` (2026-09-26, Studio Delivery M3)** is additive: seven
   nullable columns on `surface_status` — the DemoStation PRD §5.8's status fields `mode`,
   `screen_source`, `layout`, `pip_source`, `screen_capture`, `device_connected` (0/1),

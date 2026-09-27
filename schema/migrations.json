@@ -53,6 +53,11 @@
       "identifier": "v10-surface-status-fields",
       "file": "sql/010-v10-surface-status-fields.sql",
       "note": "Studio Delivery M3 (PRD 07 §5.6 F-06, §6.1; plan D-r2-21 a; Reference §15 2026-09-26). surface_status gains the DemoStation PRD §5.8's seven status fields as nullable columns — mode, screen_source, layout, pip_source, screen_capture, device_connected (0/1), surface_muted (0/1) — sent by a Surface with the mode (the macOS Surface) and NULL for every other, so both Studios show them from the row whichever path the report came by (LAN, cloud, a Cache's forwarding) instead of the Mac's live registry alone. Authoring only, never published. Additive and nullable; either peer ships independently."
+    },
+    {
+      "identifier": "v11-device-orientation",
+      "file": "sql/011-v11-device-orientation.sql",
+      "note": "ORI-02 (plan r2 D-r2-24; Reference §15 2026-09-27; PRDs 06 §5.7 and 07 §5.7 amended). A device's orientation is the device's: surface_location.orientation (the mount) is dropped — a Surface renders Automatic, or Landscape / Portrait set on the device, a publish never changes it, and the Cartridge Specification retired the column (9285b01), so both writers stop emitting it; surface_status gains orientation (TEXT, nullable, 'portrait' | 'landscape'), the orientation a Surface reports it renders (SurfaceStatus.orientation, MarqueeNetworkKit 6729aeb), which is where the Dashboard reads it. No data moves: a mount is not a report. NOT additive for an older writer (its location record names the dropped column in INSERT and UPDATE) — both peers take it together; a v10 build opens a v11 show read-only via the supersession guard."
     }
   ]
 }

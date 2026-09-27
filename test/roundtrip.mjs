@@ -201,8 +201,8 @@ loaded.run(
   [NOW, NOW]
 )
 loaded.run(
-  `INSERT INTO surface_location (config_id, location_id, orientation, label, created, updated)
-   VALUES (1, 'LOBBY-01', 'landscape', 'North wall', ?, ?)`,
+  `INSERT INTO surface_location (config_id, location_id, label, created, updated)
+   VALUES (1, 'LOBBY-01', 'North wall', ?, ?)`,
   [NOW, NOW]
 )
 loaded.run(

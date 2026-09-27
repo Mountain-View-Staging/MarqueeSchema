@@ -1,0 +1,50 @@
+-- v11-device-orientation
+-- ORI-02 (plan r2 D-r2-24, decided 2026-09-27; Reference §15, the ruling of
+-- the same day; PRDs 06 §5.7 and 07 §5.7 amended). A device's orientation is
+-- the device's: a location stops carrying one, and a status report carries
+-- the one the device renders.
+--
+-- 1. surface_location.orientation is DROPPED. It was the mount ('portrait' |
+--    'landscape'), authored in both Studios' location editors and published in
+--    the surface cartridge, where a Surface adopted it with its location. It
+--    was authored before a Surface could choose its orientation: a Surface now
+--    renders Automatic (the shape of the display it drives) by default, or
+--    Landscape / Portrait set on the device, and a publish never changes it
+--    (Cartridge Specification §6, 9285b01). The mount and the device could
+--    disagree, and the device's choice is the one that is true. A location
+--    identifies an installation — its status row, the location picker, the
+--    publish gate — and nothing more. The specification retired the column
+--    from §4.4 (a Loader ignores it, without a warning, in a cartridge that
+--    still has it), and both cartridge writers stop emitting it with this
+--    migration.
+--
+-- 2. surface_status.orientation is ADDED: the orientation the Surface reports
+--    it renders ('portrait' | 'landscape' — the Surface App PRD §5.8
+--    SurfaceStatus `orientation`, MarqueeNetworkKit 6729aeb, which the Worker's
+--    check-in accepts since micro-services ac6deae). This is where the
+--    Dashboard reads a sign's orientation (PRD 07 §5.7). Nullable, no default:
+--    a report from a Surface that predates it carries none, a bare check-in
+--    (hello / ping) never touches it, and the Dashboard shows it blank.
+--
+-- No data moves. A mount is not a report: copying it into surface_status
+-- would claim an orientation no device said it renders.
+--
+-- NOT additive for an older writer: a v10 SurfaceLocation record names
+-- `orientation` in its INSERT and UPDATE, so a v10 build cannot write a
+-- location in a v11 show — the supersession guard (Architecture §2.3 R2) opens
+-- it read-only. Both Studios take v11 in one session, as they took v7 and v9.
+--
+-- DROP COLUMN needs SQLite ≥ 3.35 (the floor v7 set). The column is not
+-- indexed (idx_surface_location_config is config_id alone), keyed, referenced,
+-- generated, or named by a CHECK, a trigger or a view; the rows keep their
+-- ids, and surface_status keeps its reference to surface_location(location_id).
+-- Foreign keys off is fine: nothing here touches a key. Authoring only:
+-- surface_status is never published (both cartridge writers whitelist their
+-- tables, and neither names it).
+--
+-- Rehearsed 2026-09-27 on copies of the four dev shows through both migrators
+-- — see the commit and the schema CLAUDE.md.
+
+ALTER TABLE surface_location DROP COLUMN orientation;
+
+ALTER TABLE surface_status ADD COLUMN orientation TEXT;   -- 'portrait' | 'landscape', as the device reports it
