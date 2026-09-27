@@ -30,6 +30,12 @@ has the same defect. So the DDL lives here, platform-neutral, and both sides are
      [README.md](README.md); it has already bitten this project once.
    - **2b. Additive, nullable-or-defaulted changes only** (post-MVP), unless coordinating a
      release of both apps. This is what lets the two peers ship independently.
+   - **⚠️ 2026-09-27 — breaking changes are allowed (plan D-r2-26).** The operator lifted
+     backward compatibility for everything but the legacy shows: a migration may drop, rename
+     or restructure (no additive-only constraint, no compatibility shims), and both Studios
+     take it in lock-step — the web's lockfile pinned, the Mac rebuilt; the superseded guard
+     stays. Still: a new migration carries the operator's dev shows forward, and 2a holds —
+     never edit a migration a database has recorded; add a new one.
 4. **Regenerate and verify before committing:** `npm test`. On macOS, refresh the Swift
    fixture first with `npm run reference` whenever `MarqueeDataKit`'s migrator changes.
 
