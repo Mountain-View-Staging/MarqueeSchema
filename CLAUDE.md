@@ -68,8 +68,9 @@ deliberate commit in the public repo (file names are the kit's random UUIDs; the
 
 ## Consuming it
 
-This repo is **public** (`github:Mountain-View-Staging/MarqueeSchema`) so consumers can resolve
-it by URL without the sibling checkout. `package.json` exports `./migrations` → `dist/migrations.js`
+This repo is **private** (it was public for the PRD review and private again since 2026-09-26).
+Consumers resolve it by URL (`github:Mountain-View-Staging/MarqueeSchema`) through git with the
+machine's credentials — pnpm fetches it over HTTPS — or through the sibling checkout. `package.json` exports `./migrations` → `dist/migrations.js`
 (dist is committed), and `files` ships `dist` + `schema`.
 
 - **Web:** depend on `"marquee-schema": "github:Mountain-View-Staging/MarqueeSchema"` and import
