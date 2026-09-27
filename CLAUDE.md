@@ -69,10 +69,23 @@ it by URL without the sibling checkout. `package.json` exports `./migrations` �
 
 ## Status
 
-- **9 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v9-surface-status`. Both the Swift and JS migrators are generated from `schema/` here;
+- **10 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v10-surface-status-fields`. Both the Swift and JS migrators are generated from `schema/` here;
   MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
   definition, not three.
+- **`v10-surface-status-fields` (2026-09-26, Studio Delivery M3)** is additive: seven
+  nullable columns on `surface_status` — the DemoStation PRD §5.8's status fields `mode`,
+  `screen_source`, `layout`, `pip_source`, `screen_capture`, `device_connected` (0/1),
+  `surface_muted` (0/1) — sent by a Surface with the mode (the macOS Surface) and NULL
+  for every other, so both Studios show them from the row whichever path the report came
+  by (plan D-r2-21 a; Reference §15). No default: absent on the wire is NULL on the row.
+  A bare check-in never touches them. An older peer's record names none of them and
+  writes around them, so either Studio ships independently. Rehearsed on copies of the
+  four dev shows through BOTH migrators with identical facts: DF26DEV v4→v10, SESSDEV1
+  and WFCHI2026X v6→v10 with no status rows; VP26 v6→v10, its one carried check-in
+  (`VT1-P`, `lan`, pulled rev 2) intact with the seven new columns NULL; the same 25
+  columns in the same order on each; `foreign_key_check` empty, `integrity_check` ok.
+
 - **`v9-surface-status` (2026-09-26, Studio Delivery M2)** adds `surface_status` — one row
   per location, the latest status a Studio holds for it whichever path it came by (`path`:
   `lan` / `cache` / `cloud`), reading the Surface App PRD §5.8 `SurfaceStatus` column for

@@ -48,6 +48,11 @@
       "identifier": "v9-surface-status",
       "file": "sql/009-v9-surface-status.sql",
       "note": "Studio Delivery M2 (PRD 07 §5.6 F-06, §6.1, §6.4). surface_status — one row per location, the latest Surface status Studio holds for it, whichever path it came by (lan / cache / cloud): the device's lastUpdate, Studio's received_at, the committed cartridge's revision and generated_at, media held / total / missing / failed, the entry and set on screen, the last issue, app version and platform. location_id is the PRIMARY KEY and references surface_location(location_id) ON DELETE CASCADE (§6.4). surface_location.last_checked_at and last_pulled_revision move into it as path 'lan' rows and are dropped. Authoring only, never published. NOT additive for an older writer (its location record names the dropped columns) — both peers take it together; a v8 build opens a v9 show read-only via the supersession guard."
+    },
+    {
+      "identifier": "v10-surface-status-fields",
+      "file": "sql/010-v10-surface-status-fields.sql",
+      "note": "Studio Delivery M3 (PRD 07 §5.6 F-06, §6.1; plan D-r2-21 a; Reference §15 2026-09-26). surface_status gains the DemoStation PRD §5.8's seven status fields as nullable columns — mode, screen_source, layout, pip_source, screen_capture, device_connected (0/1), surface_muted (0/1) — sent by a Surface with the mode (the macOS Surface) and NULL for every other, so both Studios show them from the row whichever path the report came by (LAN, cloud, a Cache's forwarding) instead of the Mac's live registry alone. Authoring only, never published. Additive and nullable; either peer ships independently."
     }
   ]
 }
