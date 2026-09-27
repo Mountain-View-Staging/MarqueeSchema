@@ -111,6 +111,8 @@ tools/generate.mjs              emit dist/
 tools/verify.mjs                structural diff vs the Swift reference
 tools/swift-reference/          SwiftPM tool: `create` the fixture, `inspect` any database
                                 through the live MarqueeDataKit records
+tools/test-shows/               SwiftPM tool: generates the PUBLIC generic test shows
+                                (marquee-test-shows) through the kit's write paths
 test/roundtrip.mjs              sql.js <-> GRDB file-compatibility proof
 test/fixtures/reference.db      checked-in Swift-produced database
 ```

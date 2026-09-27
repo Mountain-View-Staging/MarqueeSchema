@@ -1,0 +1,42 @@
+{
+  "originHash" : "95357c29448f00daffe6fc679dd9806a458d672d18fa1892a78f21b7ea55f992",
+  "pins" : [
+    {
+      "identity" : "grdb.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/groue/GRDB.swift.git",
+      "state" : {
+        "revision" : "b83108d10f42680d78f23fe4d4d80fc88dab3212",
+        "version" : "7.11.1"
+      }
+    },
+    {
+      "identity" : "matroska-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/matroska-swift.git",
+      "state" : {
+        "revision" : "7baa8a635259bc9bd2b7f3a3dffff6bcd700e453",
+        "version" : "0.2.0"
+      }
+    },
+    {
+      "identity" : "media-bridge",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/media-bridge.git",
+      "state" : {
+        "revision" : "ec3e67427f003148714ebe271120dd78c29f9116",
+        "version" : "0.39.1"
+      }
+    },
+    {
+      "identity" : "webp-swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/xocialize/webp-swift",
+      "state" : {
+        "revision" : "6aee33350834febf1b5b2e84324fc06c79d2a0b4",
+        "version" : "0.1.0"
+      }
+    }
+  ],
+  "version" : 3
+}

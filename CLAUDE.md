@@ -55,6 +55,17 @@ experimental warning, hence `--no-warnings` in the scripts.
 It exists so `verify` is a genuine cross-implementation check rather than a self-consistency
 one. It requires the sibling checkout and macOS 15+.
 
+## `tools/test-shows/` — the generator of the public test shows (2026-09-27, FIX-01)
+
+A SwiftPM tool (the kit, the Surface engine and `webp-swift` by path/URL) that builds the
+generic shows of the **PUBLIC** repo `marquee-test-shows` (checkout `../MarqueeTestShows`,
+plan D-r2-25): `RIG26` (the workhorse — VP26's structure with generated content), `EDIT26`
+(the "Editor parity" sample, entry ids and all) and two pre-v25 artifacts in `legacy/`, through
+the kit's real write paths, then publishes with the kit's writer. `test-shows build <checkout>`,
+`test-shows verify <checkout>`, `node verify-web.mjs <checkout>` — see its README. The tool is
+private; what it writes is public, so it writes nothing from a real show. A regeneration is a
+deliberate commit in the public repo (file names are the kit's random UUIDs; the encoders vary).
+
 ## Consuming it
 
 This repo is **public** (`github:Mountain-View-Staging/MarqueeSchema`) so consumers can resolve
