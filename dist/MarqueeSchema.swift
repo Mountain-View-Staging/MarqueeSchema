@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   41286ba1791d553bc99bf787c473c8da332cdf989d3cf2c6eb96fd27ab9d4a73
+// Checksum:   c5bacfd234a74feb1a9f091cb184ff18df550e4418eb03d925687320ca0df5af
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "41286ba1791d553bc99bf787c473c8da332cdf989d3cf2c6eb96fd27ab9d4a73"
+    public static let checksum = "c5bacfd234a74feb1a9f091cb184ff18df550e4418eb03d925687320ca0df5af"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -31,6 +31,7 @@ public enum MarqueeSchema {
         "v10-surface-status-fields",
         "v11-device-orientation",
         "v12-one-schedule",
+        "v13-emergency-screens-project-links",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -988,6 +989,74 @@ INSERT INTO sqlite_sequence (name, seq)
 DROP TABLE surface_schedule_entry_v11;
 
 CREATE INDEX idx_surface_sched_slot ON surface_schedule_entry (config_id, slot, timestamp);
+"""#)
+        }
+        // The operator, 2026-09-28. Two project-level additions, authoring only (the wire and every Surface client are unchanged). emergency_screen: an ordered array of { name, media_item_id }; at publish each writer appends one entry per emergency screen to the end of every playlist a surface cartridge carries (reserved ids 1e15 + playlist_id * 1e6 + id), so the items ride every media manifest and sit dormant (no directive). emergency_screen_directive: what Studio writes to switch one on (ON at 12:00:00 AM of the current venue day) or off; each writer copies it onto that screen's entry in every playlist as a takeover directive (spec §5.4, §5.5). project_link: an ordered array of { name, uri } for project documents and folders, never published. Additive; both peers take it in lock-step (D-r2-26).
+        migrator.registerMigration("v13-emergency-screens-project-links") { db in
+            try db.execute(sql: #"""
+-- v13-emergency-screens-project-links
+-- Two project-level additions (the operator, 2026-09-28). Authoring only: the
+-- Cartridge Specification's wire is unchanged, and no Surface client changes.
+--
+-- 1. EMERGENCY SCREENS. An ordered array of { name, media item }. At publish,
+--    each writer (MarqueeDataKit, the web's cartridge.js) appends one entry per
+--    emergency screen to the END of every playlist a surface cartridge carries,
+--    in `position` order, so the items ride every cartridge's media manifest and
+--    every device holds them ahead of time. An entry with no directive never
+--    plays (spec §5.4), so they sit dormant.
+--
+--    An emergency screen is switched on by an emergency_screen_directive — what
+--    Studio's UI writes: ON at 12:00:00 AM of the current venue day, so it is in
+--    force the moment a device commits the cartridge. The writer copies each such
+--    directive onto that screen's entry in every playlist as a TAKEOVER directive,
+--    and a Surface cuts to it as it cuts to any takeover (spec §5.5, §5.9).
+--    Directives are day-scoped (spec §5.4): an ON lapses when its venue day ends.
+--    OFF (on_screen 0) clears it.
+--
+--    The rows a writer adds get ids in a reserved range, stable across publishes:
+--    1e15 + playlist_id * 1e6 + the emergency screen's (or directive's) id — above
+--    any AUTOINCREMENT id, inside JavaScript's exact integers.
+--
+-- 2. PROJECT LINKS. An ordered array of { name, uri }: project documents and
+--    file folders, for the people running the show. Never published — no
+--    cartridge carries it (a cartridge sits in a public bucket).
+--
+-- Additive (three new tables), but both peers take it in lock-step (D-r2-26): a
+-- v12 build opens a v13 show read-only through the supersession guard.
+
+CREATE TABLE emergency_screen (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  name          TEXT    NOT NULL,
+  media_item_id INTEGER NOT NULL REFERENCES media_item(id) ON DELETE RESTRICT,
+  position      INTEGER NOT NULL,            -- the array's order; and the order at the end of every playlist
+  created       INTEGER NOT NULL,
+  updated       INTEGER NOT NULL
+);
+
+CREATE INDEX idx_emergency_screen_position ON emergency_screen (position);
+
+CREATE TABLE emergency_screen_directive (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  emergency_screen_id INTEGER NOT NULL REFERENCES emergency_screen(id) ON DELETE CASCADE,
+  timestamp           INTEGER NOT NULL,      -- Unix ms; the UI writes 12:00:00 AM of the current venue day
+  on_screen           INTEGER NOT NULL,      -- 1 = on (a takeover), 0 = cleared
+  timezone            TEXT,                  -- authoring context only, as directive.timezone
+  created             INTEGER NOT NULL,
+  updated             INTEGER NOT NULL
+);
+
+CREATE INDEX idx_emergency_screen_directive_screen ON emergency_screen_directive (emergency_screen_id, timestamp);
+
+CREATE TABLE project_link (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  name     TEXT    NOT NULL,
+  uri      TEXT    NOT NULL,
+  position INTEGER NOT NULL,                 -- the array's order
+  created  INTEGER NOT NULL,
+  updated  INTEGER NOT NULL
+);
+
+CREATE INDEX idx_project_link_position ON project_link (position);
 """#)
         }
         return migrator

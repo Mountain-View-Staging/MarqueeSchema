@@ -92,10 +92,49 @@ while the repo is public) — or through the sibling checkout. `package.json` ex
 
 ## Status
 
-- **12 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v12-one-schedule`. Both the Swift and JS migrators are generated from `schema/` here;
-  MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
-  definition, not three.
+- **13 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v13-emergency-screens-project-links`. Both the Swift and JS migrators are generated from
+  `schema/` here; MarqueeDataKit adopts the generated Swift directly (see above), so there is
+  one migrator definition, not three.
+- **`v13-emergency-screens-project-links` (2026-09-28)** — two project-level arrays, authoring
+  only: **the cartridge wire is unchanged and no Surface client changes.** Three new tables,
+  nothing else touched:
+  - `emergency_screen` (`name`, `media_item_id` RESTRICT, `position`): an ordered array of
+    named media items. **Publish expands it** (MarqueeDataKit's `emergencyRows`, the web's
+    `cartridge.js` `emergencyRows`, the same rule row for row): every playlist a surface
+    cartridge carries ends with one `playlist_entry` per screen, in `position` order, from the
+    playlist's last position + 1 (0 in an empty one), and every surface cartridge seeds the
+    screens' items, so they ride its media manifest whether it has playlists or not. An entry
+    with no directive never plays (spec §5.4), so the screens sit dormant on every device.
+  - `emergency_screen_directive` (`emergency_screen_id` CASCADE, `timestamp`, `on_screen`,
+    `timezone`): the switch. Each row is copied onto that screen's entry in every playlist as
+    a **`takeover`** directive, so a Surface cuts to it as it cuts to any takeover (§5.5, §5.9).
+    The UI (not built yet) writes ON at 12:00:00 AM of the current venue day — the day's
+    `start_time` as both editors author days (local 00:00:00.000–23:59:59.999), the earliest
+    instant that still governs that day. Through the spec's engine, unchanged: on screen from
+    the first second of the day; lapses when the next event day starts (§5.4); **outside the
+    event a Surface runs on Day 1 (§8.2), so a switch must sit on Day 1 to show there, and it
+    then also holds on the real Day 1 until it is cleared**; skipped by a sign whose orientation
+    the item has no file for (§5.3). Takeovers share the screen (§5.5): an emergency does not
+    suppress another active takeover.
+  - `project_link` (`name`, `uri`, `position`): the project's documents and file folders, any
+    URI scheme. **Never published** — a cartridge sits in a public bucket.
+  - The added rows get ids in a reserved range, stable from one publish to the next:
+    `1e15 + playlist_id × 1e6 + row id` (the screen's id for an entry, the switch's for a
+    directive) — above any AUTOINCREMENT id, inside JavaScript's exact integers. Both writers
+    refuse, by name, a row id outside 1…999 999 or a playlist id past the exact range.
+  - "Changed since this publish" (STD-11/12) counts both tables in every surface's closure;
+    a removed switch stamps its screen and a removed screen stamps every `surface_config`.
+  - Additive, but both peers take it in lock-step (D-r2-26): a v12 build opens a v13 show
+    read-only through the supersession guard. `format_version` stays 25.0.1.
+  - Rehearsed on copies (`sqlite3 .backup`, never in place) of the three public test shows and
+    the operator's newest dev show, through the generated JS migrator under sql.js AND the
+    Swift one under GRDB (`refgen inspect`): the full `.dump` identical between the two on each,
+    the 19 existing tables byte-identical to before, the three new ones empty,
+    `foreign_key_check` empty, `integrity_check` ok. `roundtrip.mjs` writes two screens out of
+    order, a switch and two links, and reads them back in the array's order (37 checks);
+    MarqueeDataKit's `ProjectArraysTests` and the web's `test/projectArrays.test.mjs` cover
+    the rest, the web's through the spec's own Loader and engine.
 - **`v12-one-schedule` (2026-09-27, ONE-02)** — one schedule per surface (plan D-r2-30; the
   Cartridge Specification §4.4/§5.1 at `d54bd88`, PR #12). `surface_schedule_entry.slot` is
   `playlist` | `demo_station`: a device plays the one scheduled playlist with the files of the

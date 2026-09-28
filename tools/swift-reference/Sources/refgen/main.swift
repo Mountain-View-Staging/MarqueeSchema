@@ -55,6 +55,12 @@ struct Summary: Encodable {
     var mediaFileNames: [String]
     var mediaItemNames: [String]
     var playlistNames: [String]
+    // v13: the project's two arrays, decoded through the kit's records.
+    var emergencyScreens: Int
+    var emergencyScreenDirectives: Int
+    var projectLinks: Int
+    var emergencyScreenNames: [String]
+    var projectLinkURIs: [String]
 }
 
 func appliedIdentifiers(_ path: String) throws -> [String] {
@@ -143,6 +149,10 @@ case "inspect":
     let surfaces = existingTables.contains("surface_config")
         ? try await store.surfaceConfigs(includeArchived: true) : []
     let tags = existingTables.contains("tag") ? try await store.allTags() : []
+    let emergencyScreens = existingTables.contains("emergency_screen") ? try await store.emergencyScreens() : []
+    let emergencySwitches = existingTables.contains("emergency_screen_directive")
+        ? try await store.emergencyScreenDirectives() : []
+    let projectLinks = existingTables.contains("project_link") ? try await store.projectLinks() : []
 
     var entryCount = 0
     var directiveCount = 0
@@ -183,7 +193,12 @@ case "inspect":
         tags: tags.count,
         mediaFileNames: files.map(\.sourceFileName).sorted(),
         mediaItemNames: items.map(\.name).sorted(),
-        playlistNames: playlists.map(\.name).sorted())
+        playlistNames: playlists.map(\.name).sorted(),
+        emergencyScreens: emergencyScreens.count,
+        emergencyScreenDirectives: emergencySwitches.count,
+        projectLinks: projectLinks.count,
+        emergencyScreenNames: emergencyScreens.map(\.name),
+        projectLinkURIs: projectLinks.map(\.uri))
 
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

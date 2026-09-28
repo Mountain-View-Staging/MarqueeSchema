@@ -63,6 +63,11 @@
       "identifier": "v12-one-schedule",
       "file": "sql/012-v12-one-schedule.sql",
       "note": "ONE-02 (plan r2 D-r2-30, decided 2026-09-27; Reference §15; Cartridge Specification §4.4/§5.1 at d54bd88, spec PR #12). One schedule per surface: surface_schedule_entry.slot becomes 'playlist' | 'demo_station'. By reading (b) a config keeps its 'landscape' entries when it has any, else its 'portrait' ones, as 'playlist'; the other orientation's entries of a config that had both are dropped. A demo_station entry is branding only (reading (a): the picture-in-picture plays the same playlist in the opposite orientation), so its PIP playlist is dropped and the CHECK — now the wire's exactly — forbids one. The table is rebuilt (renamed aside, created, filled, dropped), keeping ids and the AUTOINCREMENT sequence; idx_surface_sched_slot is created again. NOT additive for an older writer (a v11 build writes 'portrait' / 'landscape' rows the CHECK refuses) — both peers take it together; a v11 build opens a v12 show read-only via the supersession guard."
+    },
+    {
+      "identifier": "v13-emergency-screens-project-links",
+      "file": "sql/013-v13-emergency-screens-project-links.sql",
+      "note": "The operator, 2026-09-28. Two project-level additions, authoring only (the wire and every Surface client are unchanged). emergency_screen: an ordered array of { name, media_item_id }; at publish each writer appends one entry per emergency screen to the end of every playlist a surface cartridge carries (reserved ids 1e15 + playlist_id * 1e6 + id), so the items ride every media manifest and sit dormant (no directive). emergency_screen_directive: what Studio writes to switch one on (ON at 12:00:00 AM of the current venue day) or off; each writer copies it onto that screen's entry in every playlist as a takeover directive (spec §5.4, §5.5). project_link: an ordered array of { name, uri } for project documents and folders, never published. Additive; both peers take it in lock-step (D-r2-26)."
     }
   ]
 }

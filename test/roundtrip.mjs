@@ -222,6 +222,15 @@ loaded.run(
 
 loaded.run(`UPDATE project SET project_code = 'CNX2026', timezone = 'America/Los_Angeles', updated = ?`, [NOW])
 
+// v13: the project's arrays — emergency screens (inserted out of order, read back by
+// position), a switch on the first, and links.
+loaded.run(`INSERT INTO emergency_screen (name, media_item_id, position, created, updated) VALUES ('Shelter', 2, 1, ?, ?)`, [NOW, NOW])
+loaded.run(`INSERT INTO emergency_screen (name, media_item_id, position, created, updated) VALUES ('Evacuate', 1, 0, ?, ?)`, [NOW, NOW])
+loaded.run(`INSERT INTO emergency_screen_directive (emergency_screen_id, timestamp, on_screen, timezone, created, updated)
+            VALUES (2, ?, 1, 'America/Los_Angeles', ?, ?)`, [NOW, NOW, NOW])
+loaded.run(`INSERT INTO project_link (name, uri, position, created, updated) VALUES ('Run of show', 'https://docs.example/ros', 0, ?, ?)`, [NOW, NOW])
+loaded.run(`INSERT INTO project_link (name, uri, position, created, updated) VALUES ('Venue files', 'https://drive.example/f', 1, ?, ?)`, [NOW, NOW])
+
 // v12's CHECK (the wire's): one schedule per surface — a retired per-orientation slot
 // is refused, and a demo entry is branding only, never a playlist (D-r2-30).
 for (const [label, values] of [
@@ -282,6 +291,11 @@ if (b) {
   check('1 tag decoded', b.tags === 1, `got ${b.tags}`)
   check('1 project day decoded', b.projectDays === 1, `got ${b.projectDays}`)
   check('project edits persisted', b.projectCode === 'CNX2026', `got ${b.projectCode}`)
+  check('2 emergency screens decoded, in the array\'s order',
+    b.emergencyScreens === 2 && b.emergencyScreenNames.join(',') === 'Evacuate,Shelter', JSON.stringify(b.emergencyScreenNames))
+  check('1 emergency screen directive decoded', b.emergencyScreenDirectives === 1, `got ${b.emergencyScreenDirectives}`)
+  check('2 project links decoded, in the array\'s order',
+    b.projectLinks === 2 && b.projectLinkURIs.join(',') === 'https://docs.example/ros,https://drive.example/f', JSON.stringify(b.projectLinkURIs))
 }
 
 // ── Supersession guard ─────────────────────────────────────────────────────
