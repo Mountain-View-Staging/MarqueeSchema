@@ -62,15 +62,20 @@ generic shows of the **PUBLIC** repo `marquee-test-shows` (checkout `../MarqueeT
 plan D-r2-25): `RIG26` (the workhorse — VP26's structure with generated content), `EDIT26`
 (the "Editor parity" sample, entry ids and all) and two pre-v25 artifacts in `legacy/`, through
 the kit's real write paths, then publishes with the kit's writer. `test-shows build <checkout>`,
-`test-shows verify <checkout>`, `node verify-web.mjs <checkout>` — see its README. The tool is
-private; what it writes is public, so it writes nothing from a real show. A regeneration is a
+`test-shows verify <checkout>`, `node verify-web.mjs <checkout>` — see its README. Like this
+repo, the tool is public, and what it writes is public too, so it writes nothing from a real show. A regeneration is a
 deliberate commit in the public repo (file names are the kit's random UUIDs; the encoders vary).
 
 ## Consuming it
 
-This repo is **private** (it was public for the PRD review and private again since 2026-09-26).
-Consumers resolve it by URL (`github:Mountain-View-Staging/MarqueeSchema`) through git with the
-machine's credentials — pnpm fetches it over HTTPS — or through the sibling checkout. `package.json` exports `./migrations` → `dist/migrations.js`
+This repo is **PUBLIC**, and stays so while the live legacy studio (studio.mvsmarquee.com) needs
+it: that client reads it and only processes correctly while it is public (the operator,
+2026-09-28). It goes private once the legacy studio is no longer supported. Until then everything
+committed here is published: no client or brand names, no legacy show codes, no secrets. (The
+2026-09-26 note that it was private again was wrong for this repo.) Consumers resolve it by URL
+(`github:Mountain-View-Staging/MarqueeSchema`) — pin it in the lockfile's git form, which installs
+through the machine's git credentials whatever the visibility (`pnpm update` writes a tarball pin
+while the repo is public) — or through the sibling checkout. `package.json` exports `./migrations` → `dist/migrations.js`
 (dist is committed), and `files` ships `dist` + `schema`.
 
 - **Web:** depend on `"marquee-schema": "github:Mountain-View-Staging/MarqueeSchema"` and import
