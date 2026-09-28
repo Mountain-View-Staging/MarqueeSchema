@@ -87,10 +87,37 @@ machine's credentials — pnpm fetches it over HTTPS — or through the sibling 
 
 ## Status
 
-- **11 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v11-device-orientation`. Both the Swift and JS migrators are generated from `schema/` here;
+- **12 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v12-one-schedule`. Both the Swift and JS migrators are generated from `schema/` here;
   MarqueeDataKit adopts the generated Swift directly (see above), so there is one migrator
   definition, not three.
+- **`v12-one-schedule` (2026-09-27, ONE-02)** — one schedule per surface (plan D-r2-30; the
+  Cartridge Specification §4.4/§5.1 at `d54bd88`, PR #12). `surface_schedule_entry.slot` is
+  `playlist` | `demo_station`: a device plays the one scheduled playlist with the files of the
+  orientation it renders. By **reading (b)** a config keeps its `landscape` entries when it has
+  any, else its `portrait` ones, as `playlist`; the other orientation's entries of a config that
+  had both are dropped. By **reading (a)** a `demo_station` entry is branding only — the
+  DemoStation's picture-in-picture plays the same playlist in the opposite orientation — so its
+  pre-v25 PIP playlist (D3) is cleared, and the CHECK (now the wire's, exactly) refuses one. The
+  CHECK changed, so the table is REBUILT: renamed aside, created under its name, filled, the old
+  one dropped, `idx_surface_sched_slot (config_id, slot, timestamp)` created again. No table
+  references it, so the rename rewrites nothing on either SQLite; ids, clocks and the
+  AUTOINCREMENT sequence are kept (the rename carries `sqlite_sequence`'s row on Apple's SQLite,
+  node:sqlite and sql.js alike — measured — and the migration copies it to the new table, so a
+  dropped entry's id is never reused). **Not additive for an older writer** (a v11 build writes
+  `portrait` / `landscape` rows the CHECK refuses): both peers take v12 in the one cut-over, and
+  a v11 build opens a v12 show read-only. `format_version` stays 25.0.1 (reading c).
+  Rehearsed on copies of the four dev shows (`sqlite3 .backup`, never in place) through the
+  generated JS migrator under sql.js AND the Swift one under GRDB (`refgen inspect`), the full
+  `.dump` identical between the two on each; `foreign_key_check` empty, `integrity_check` ok:
+  **DF26DEV** v4→v12, no schedule; **SESSDEV1** v6→v12, drops entry 12 (config 1's portrait
+  "Room21" at Jun 24 13:00, beside its landscape twin, entry 11, same playlist, same instant);
+  **VP26** v6→v12, drops entry 5 (VT3's portrait "VP PIP Loop" from Aug 27 00:00) and clears
+  demo entry 4's PIP playlist ("VP PIP Loop"; its branding, items 6 and 7, kept) — VT1 keeps its
+  two portrait entries and VT2 its landscape one, as `playlist`; **WFCHI2026X** v10→v12, its one
+  portrait entry kept as `playlist`. The operator starts a fresh show after this round (D-r2-30),
+  so an old show only has to open. `roundtrip.mjs` writes its entry on `playlist` and checks the
+  CHECK refuses a retired slot and a demo playlist (34 checks).
 - **`v11-device-orientation` (2026-09-27, ORI-02)** — a device's orientation is the device's
   (plan D-r2-24, Reference §15; PRDs 06 §5.7 and 07 §5.7 amended). `surface_location.orientation`
   (the mount, NOT NULL) is dropped: a Surface renders Automatic, or Landscape / Portrait set on

@@ -207,7 +207,7 @@ loaded.run(
 )
 loaded.run(
   `INSERT INTO surface_schedule_entry (config_id, slot, timestamp, playlist_id, created, updated)
-   VALUES (1, 'landscape', ?, 1, ?, ?)`,
+   VALUES (1, 'playlist', ?, 1, ?, ?)`,
   [NOW, NOW, NOW]
 )
 
@@ -221,6 +221,21 @@ loaded.run(
 )
 
 loaded.run(`UPDATE project SET project_code = 'CNX2026', timezone = 'America/Los_Angeles', updated = ?`, [NOW])
+
+// v12's CHECK (the wire's): one schedule per surface — a retired per-orientation slot
+// is refused, and a demo entry is branding only, never a playlist (D-r2-30).
+for (const [label, values] of [
+  ["a retired 'portrait' slot", `(1, 'portrait', ${NOW}, 1, NULL, ${NOW}, ${NOW})`],
+  ["a retired 'landscape' slot", `(1, 'landscape', ${NOW}, 1, NULL, ${NOW}, ${NOW})`],
+  ['a demo entry with a playlist', `(1, 'demo_station', ${NOW}, 1, 1, ${NOW}, ${NOW})`],
+]) {
+  let refused = false
+  try {
+    loaded.run(`INSERT INTO surface_schedule_entry (config_id, slot, timestamp, playlist_id, background_item_id, created, updated)
+                VALUES ${values}`)
+  } catch { refused = true }
+  check(`surface_schedule_entry CHECK refuses ${label}`, refused)
+}
 
 // Exercise the CHECK constraint that guarantees "an item always keeps >= 1 file".
 let checkRejected = false
