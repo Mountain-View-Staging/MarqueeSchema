@@ -305,20 +305,23 @@ enum VerifyBrand {
                   "BrandDelivery: the brand is not the book's")
             lines.append("  BrandDelivery.register(manifest:locate:): \(outcome.summary); ink \(hex(brand.ink)), onDark \(hex(brand.onDark)), "
                          + "muted (derived) \(hex(brand.muted)), mutedOnLight \(hex(brand.mutedOnLight))")
-            // The boards' own chooser, over the delivered backings as a Surface measures them.
-            let region = Contrast.rowBlockRegion
-            let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>)] = [("portrait", \.portraitFileId), ("landscape", \.landscapeFileId)]
-            for (slot, keyPath) in slots {
+            // The boards' own chooser, over the delivered backings as a Surface measures them:
+            // each board where its text is, on its own stage (SB-05).
+            let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>, BoardCanvas)] =
+                [("portrait", \.portraitFileId, .portrait), ("landscape", \.landscapeFileId, .landscape)]
+            for (slot, keyPath, canvas) in slots {
                 guard let set = sets.first, let item = items.first(where: { $0.id == set.backingItemId }),
                       let fileId = item[keyPath: keyPath], let file = files[fileId] else { continue }
-                let extremes = Contrast.backingExtremes(url: show.appendingPathComponent(file.deliverableFileName), region: region)
-                let backing: BoardBacking = extremes.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable
-                let schedule = ScheduleLayoutStyle.choose(brand: brand, backing: backing)
-                let nowNext = SignageLayoutStyle.choose(brand: brand, backing: backing)
-                check(extremes != nil && schedule.isDark && !schedule.needsScrim && nowNext.isDark && !nowNext.needsScrim,
+                let url = show.appendingPathComponent(file.deliverableFileName)
+                let rows = Contrast.backingExtremes(url: url, region: Contrast.textRegion(.schedule, on: canvas))
+                let column = Contrast.backingExtremes(url: url, region: Contrast.textRegion(.nowNext, on: canvas))
+                let schedule = ScheduleLayoutStyle.choose(brand: brand, backing: rows.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable)
+                let nowNext = SignageLayoutStyle.choose(brand: brand, backing: column.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable)
+                check(rows != nil && column != nil && schedule.isDark && !schedule.needsScrim && nowNext.isDark && !nowNext.needsScrim,
                       "the \(slot) backing: schedule \(schedule.summary); now/next \(nowNext.summary)")
-                lines.append(String(format: "  the %@ backing as a Surface measures it (row block): luminance %.4f…%.4f; schedule board %@; now/next board %@",
-                                    slot, extremes?.min ?? -1, extremes?.max ?? -1, schedule.summary, nowNext.summary))
+                lines.append(String(format: "  the %@ backing as a Surface measures it: schedule rows %.4f…%.4f, board %@; now/next column %.4f…%.4f, board %@",
+                                    slot, rows?.min ?? -1, rows?.max ?? -1, schedule.summary,
+                                    column?.min ?? -1, column?.max ?? -1, nowNext.summary))
             }
         }
         return (lines, failures)
