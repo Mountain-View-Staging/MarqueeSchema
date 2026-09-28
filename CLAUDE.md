@@ -107,16 +107,15 @@ while the repo is public) — or through the sibling checkout. `package.json` ex
     screens' items, so they ride its media manifest whether it has playlists or not. An entry
     with no directive never plays (spec §5.4), so the screens sit dormant on every device.
   - `emergency_screen_directive` (`emergency_screen_id` CASCADE, `timestamp`, `on_screen`,
-    `timezone`): the switch. Each row is copied onto that screen's entry in every playlist as
-    a **`takeover`** directive, so a Surface cuts to it as it cuts to any takeover (§5.5, §5.9).
-    The UI (not built yet) writes ON at 12:00:00 AM of the current venue day — the day's
-    `start_time` as both editors author days (local 00:00:00.000–23:59:59.999), the earliest
-    instant that still governs that day. Through the spec's engine, unchanged: on screen from
-    the first second of the day; lapses when the next event day starts (§5.4); **outside the
-    event a Surface runs on Day 1 (§8.2), so a switch must sit on Day 1 to show there, and it
-    then also holds on the real Day 1 until it is cleared**; skipped by a sign whose orientation
-    the item has no file for (§5.3). Takeovers share the screen (§5.5): an emergency does not
-    suppress another active takeover.
+    `timezone`): the switch. Each row is copied onto that screen's entry in every playlist as an
+    **`alert`** directive — the cartridge specification's third type (spec `a34e6d2`, the same
+    day): it outranks every takeover, is never scoped to a day, and a Surface cuts to it when it
+    commits the cartridge (§5.3 – §5.6, §5.9). Studio activates a screen with one row ON at
+    timestamp 0 and clears it by deleting the screen's rows, so an active alert governs on every
+    show day and outside the event, whatever a device's clock says. The switch still passes the
+    orientation gate like any entry, which is why Studio requires an alert's item to have a file
+    in both slots. (The migration's SQL comment, written before the alert type, says takeover;
+    an applied migration is never edited.)
   - `project_link` (`name`, `uri`, `position`): the project's documents and file folders, any
     URI scheme. **Never published** — a cartridge sits in a public bucket.
   - The added rows get ids in a reserved range, stable from one publish to the next:
