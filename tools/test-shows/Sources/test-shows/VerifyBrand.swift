@@ -306,14 +306,15 @@ enum VerifyBrand {
             lines.append("  BrandDelivery.register(manifest:locate:): \(outcome.summary); ink \(hex(brand.ink)), onDark \(hex(brand.onDark)), "
                          + "muted (derived) \(hex(brand.muted)), mutedOnLight \(hex(brand.mutedOnLight))")
             // The boards' own chooser, over the delivered backings as a Surface measures them.
-            let region = Contrast.scheduleRegions(ScheduleLayoutStyle.typicalVariant(for: brand)).first { $0.name == "row block" }!.rect
+            let region = Contrast.rowBlockRegion
             let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>)] = [("portrait", \.portraitFileId), ("landscape", \.landscapeFileId)]
             for (slot, keyPath) in slots {
                 guard let set = sets.first, let item = items.first(where: { $0.id == set.backingItemId }),
                       let fileId = item[keyPath: keyPath], let file = files[fileId] else { continue }
                 let extremes = Contrast.backingExtremes(url: show.appendingPathComponent(file.deliverableFileName), region: region)
-                let schedule = ScheduleLayoutStyle.choose(brand: brand, backingExtremes: extremes)
-                let nowNext = SignageLayoutStyle.choose(brand: brand, backingExtremes: extremes)
+                let backing: BoardBacking = extremes.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable
+                let schedule = ScheduleLayoutStyle.choose(brand: brand, backing: backing)
+                let nowNext = SignageLayoutStyle.choose(brand: brand, backing: backing)
                 check(extremes != nil && schedule.isDark && !schedule.needsScrim && nowNext.isDark && !nowNext.needsScrim,
                       "the \(slot) backing: schedule \(schedule.summary); now/next \(nowNext.summary)")
                 lines.append(String(format: "  the %@ backing as a Surface measures it (row block): luminance %.4f…%.4f; schedule board %@; now/next board %@",
