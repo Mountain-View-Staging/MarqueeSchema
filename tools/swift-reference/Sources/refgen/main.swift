@@ -88,6 +88,10 @@ guard CommandLine.arguments.count >= 3 else {
 let command = CommandLine.arguments[1]
 let path = CommandLine.arguments[2]
 
+// A refusal is an ANSWER here, not a crash: callers (the web's cartridge test, STD-09) read it from
+// stderr. An error escaping top-level code traps instead (SIGTRAP), which writes a crash report on every
+// run, and on a macOS beta raises a crash dialog under the responsible app's name. So: message, exit 1.
+do {
 switch command {
 case "create":
     try? FileManager.default.removeItem(atPath: path)
@@ -237,4 +241,8 @@ case "read-cartridge":
 default:
     FileHandle.standardError.write(Data((usage + "\n").utf8))
     exit(2)
+}
+} catch {
+    FileHandle.standardError.write(Data("refgen: \(error)\n".utf8))
+    exit(1)
 }
