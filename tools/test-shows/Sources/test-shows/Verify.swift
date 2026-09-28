@@ -8,7 +8,7 @@
 //      the kit's consumer path as v25;
 //    - every file a manifest names and every rendition a cartridge offers is in the show
 //      folder, at its size and hash;
-//    - filesForLanes on the portrait-only config returns its portrait lane's files and not
+//    - filesForLanes on PORT1 (the portrait sign's config) returns its portrait lane's files and not
 //      one landscape-only file;
 //    - the pre-v25 artifacts are refused with their codes;
 //    - every lock file matches its folder;
@@ -31,6 +31,7 @@ enum Verify {
         func check(_ ok: Bool, _ what: @autoclosure () -> String) {
             if !ok { failures.append(what()) }
         }
+        func scheduleEntries(_ n: Int) -> String { "\(n) entr\(n == 1 ? "y" : "ies")" }
         let shows = repo.appendingPathComponent("shows")
         let codes = try FileManager.default.contentsOfDirectory(atPath: shows.path)
             .filter { !$0.hasPrefix(".") }.sorted()
@@ -96,14 +97,18 @@ enum Verify {
                     let dp = filesForLanes(snap, lanes: [.portrait], demo: true)
                     let dl = filesForLanes(snap, lanes: [.landscape], demo: true)
                     let bytes = { (ids: Set<Int64>) in ids.reduce(Int64(0)) { $0 + (snap.manifest[$1]?.fileSize ?? 0) } }
+                    let schedule: String = "schedule: " + scheduleEntries(snap.scheduleBySlot.playlist.count) + " on the playlist slot, "
+                        + scheduleEntries(snap.scheduleBySlot.demoStation.count) + " on the demo_station slot"
+                    let locationIds: String = snap.locations.map(\.locationId).joined(separator: ", ")
+                    let directiveCount: Int = snap.directives.values.reduce(0) { $0 + $1.standard.count + $1.takeover.count }
                     laneLine = "portrait lane \(p.count) (\(bytes(p)) B), landscape lane \(l.count) (\(bytes(l)) B)"
                         + ", DemoStation host: portrait \(dp.count) / landscape \(dl.count)"
-                        + "; lanes scheduled: portrait \(snap.scheduleBySlot.portrait.count), landscape \(snap.scheduleBySlot.landscape.count), demo \(snap.scheduleBySlot.demoStation.count)"
-                        + "; \(snap.locations.count) location(s): \(snap.locations.map(\.locationId).joined(separator: ", "))"
-                        + "; \(snap.directives.values.reduce(0) { $0 + $1.standard.count + $1.takeover.count }) directives"
-                    // The portrait-only config: no landscape schedule, and a portrait device
-                    // fetches its lane's files and nothing that only a landscape slot names.
-                    if snap.scheduleBySlot.landscape.isEmpty && snap.scheduleBySlot.demoStation.isEmpty {
+                        + "; \(schedule); \(snap.locations.count) location(s): \(locationIds); \(directiveCount) directives"
+                    // The portrait sign's config (RIG26's PORT1): a config has one schedule
+                    // (D-r2-30), and a portrait device fetches its lane's files and nothing
+                    // that only a landscape slot names — fetch by lane (D-r2-23).
+                    if snap.surfaceConfig.surfaceId == "PORT1" {
+                        check(snap.scheduleBySlot.demoStation.isEmpty, "\(code)/\(name): PORT1 schedules no demo")
                         var portraitSlot = Set<Int64>(), landscapeSlot = Set<Int64>()
                         for item in snap.mediaItems.values {
                             if let f = item.portraitFileId { portraitSlot.insert(f) }
@@ -115,7 +120,7 @@ enum Verify {
                               "\(code)/\(name): the portrait lane is not every file but the landscape-only ones")
                         check(l.count + p.count - p.intersection(l).count == snap.manifest.count,
                               "\(code)/\(name): the two lanes do not cover the manifest")
-                        laneLine += "; portrait-only config: \(p.count) of \(snap.manifest.count) files, \(landscapeOnly.count) landscape-only files stay at the origin"
+                        laneLine += "; a portrait device: \(p.count) of \(snap.manifest.count) files, \(landscapeOnly.count) landscape-only files stay at the origin"
                     }
                 }
                 check(warnings.isEmpty, "\(code)/\(name): \(warnings.count) Loader warning(s): \(warnings.map(\.message).joined(separator: "; "))")

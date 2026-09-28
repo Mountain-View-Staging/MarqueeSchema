@@ -1,15 +1,17 @@
 //
 //  Shows.swift — the shows, as an author would build them in Studio.
 //
-//  RIG26  the workhorse: seven venue days in America/New_York, three surface configs —
-//         PORT1 (the portrait lane only, one location: a portrait device fetches only its
-//         lane's files), TAKE1 (both lanes, ~1,000 directives: standing, takeover and OFF
-//         across the days, two locations) and DEMO1 (a DemoStation: a still and a video
-//         background, a transparent and an opaque overlay, a portrait mini-player lane and a
-//         landscape rotation) — over items with portrait-only, landscape-only, both-slot and
+//  RIG26  the workhorse: seven venue days in America/New_York, three surface configs, each
+//         with ONE playlist schedule, which a device plays with the files of the orientation
+//         it renders (plan D-r2-30) — PORT1 (the Rotation, one location, a portrait sign: a
+//         portrait device fetches only its lane's files), TAKE1 (~1,000 directives:
+//         standing, takeover and OFF across the days, two locations) and DEMO1 (a
+//         DemoStation: the Rotation, whose picture-in-picture is the same rotation in the
+//         other orientation's files; a still and a video background, a transparent and an
+//         opaque overlay) — over items with portrait-only, landscape-only, both-slot and
 //         square files, a session board with a video backing, a project default backing and
 //         wallpapers in both slots. Its structure follows the dev show the harnesses used to
-//         read (days, lanes, directive cadence), with generated content only.
+//         read (days, directive cadence), with generated content only.
 //
 //  EDIT26 the editor sample: the 12-entry "TEST — Editor parity" playlist, row for row,
 //         trim for trim, flag for flag, with its three directives on the fourth row (entry
@@ -287,7 +289,9 @@ enum Rig26 {
         try await a.direct(takeoverA, cadence(.takeover, on: 10, off: 20), zone: zoneName)
         try await a.direct(takeoverB, cadence(.takeover, on: 30, off: 40), zone: zoneName)
 
-        // The mini player: the portrait lane a landscape DemoStation shows in its PIP.
+        // The mini player: before one schedule (D-r2-30) the portrait lane a landscape
+        // DemoStation showed in its PIP. The PIP is now the Rotation, moved, so this playlist
+        // is scheduled nowhere: an unscheduled playlist no cartridge carries.
         let mini = try await a.playlist("Mini player")
         for item in [miniAItem, miniBItem, miniLoopItem] {
             try await a.direct(try await a.append(item, to: mini), daily, zone: zoneName)
@@ -311,19 +315,17 @@ enum Rig26 {
         }
         let authored = a.clock
         let port1 = try await config("PORT1", "Portrait rotation", locations: [("PORT1-A", "Portrait sign")])
-        try await a.store.schedulePlaylist(configId: port1.id!, slot: .portrait, playlistId: rotation.id!, timestamp: authored, now: a.now())
-        try await a.store.schedulePlaylist(configId: port1.id!, slot: .portrait, playlistId: rotation.id!, timestamp: day1, now: a.now())
+        try await a.store.schedulePlaylist(configId: port1.id!, playlistId: rotation.id!, timestamp: authored, now: a.now())
+        try await a.store.schedulePlaylist(configId: port1.id!, playlistId: rotation.id!, timestamp: day1, now: a.now())
 
-        let take1 = try await config("TAKE1", "Takeovers, both lanes",
+        let take1 = try await config("TAKE1", "Takeovers",
                                      locations: [("TAKE1-A", "Takeover sign — hall"), ("TAKE1-B", "Takeover sign — lobby")])
-        try await a.store.schedulePlaylist(configId: take1.id!, slot: .landscape, playlistId: takeovers.id!, timestamp: authored, now: a.now())
-        try await a.store.schedulePlaylist(configId: take1.id!, slot: .portrait, playlistId: takeovers.id!, timestamp: authored, now: a.now())
+        try await a.store.schedulePlaylist(configId: take1.id!, playlistId: takeovers.id!, timestamp: authored, now: a.now())
 
         let demo1 = try await config("DEMO1", "Demo station", locations: [("DEMO1-A", "Demo station")])
-        try await a.store.schedulePlaylist(configId: demo1.id!, slot: .landscape, playlistId: rotation.id!, timestamp: authored, now: a.now())
+        try await a.store.schedulePlaylist(configId: demo1.id!, playlistId: rotation.id!, timestamp: authored, now: a.now())
         try await a.store.scheduleDemo(configId: demo1.id!, backgroundItemId: demoStill.id!, overlayItemId: overlayClear.id!,
                                        timestamp: authored + 1000, now: a.now())
-        try await a.store.schedulePlaylist(configId: demo1.id!, slot: .portrait, playlistId: mini.id!, timestamp: day1, now: a.now())
         try await a.store.scheduleDemo(configId: demo1.id!, backgroundItemId: demoVideo.id!, overlayItemId: overlaySolid.id!,
                                        timestamp: dayRows[1].startTime, now: a.now())
         try await a.store.scheduleDemoOff(configId: demo1.id!, timestamp: at(2, 18), now: a.now())
@@ -454,18 +456,17 @@ enum Edit26 {
             (.takeover, dayStart + 12 * 3_600_000 + 30 * 60_000, false),  // 12:30 PM
         ], zone: zoneName)
 
-        // One surface over the parity playlist on both lanes, so a device can play the sample
-        // and the Loader has a surface cartridge to read. It adds nothing the playlist's
-        // rows, trims, flags or directives say.
+        // One surface scheduling the parity playlist, so a device of either orientation can
+        // play the sample and the Loader has a surface cartridge to read. It adds nothing the
+        // playlist's rows, trims, flags or directives say.
         let t = a.now()
-        let edit1 = try await a.store.insertSurfaceConfig(SurfaceConfig(surfaceId: "EDIT1", name: "Editor sample, both lanes",
+        let edit1 = try await a.store.insertSurfaceConfig(SurfaceConfig(surfaceId: "EDIT1", name: "Editor sample",
                                                                         created: t, updated: t))
         let lt = a.now()
         _ = try await a.store.insertSurfaceLocation(SurfaceLocation(configId: edit1.id!, locationId: "EDIT1-A",
                                                                     label: "Editor sample sign", created: lt, updated: lt))
         let authored = a.clock
-        try await a.store.schedulePlaylist(configId: edit1.id!, slot: .portrait, playlistId: parity.id!, timestamp: authored, now: a.now())
-        try await a.store.schedulePlaylist(configId: edit1.id!, slot: .landscape, playlistId: parity.id!, timestamp: authored, now: a.now())
+        try await a.store.schedulePlaylist(configId: edit1.id!, playlistId: parity.id!, timestamp: authored, now: a.now())
 
         a.advance(to: publishAt)
         let root = a.project.root

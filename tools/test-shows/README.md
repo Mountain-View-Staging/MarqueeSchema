@@ -86,15 +86,15 @@ with `# Marquee test shows`.
   `MarqueeSessionBoardCartridge.BrandImport.importStyleBook` on the fixed clock — the call Studio
   for Mac's Brand pane makes — then the style's backing and mark selected from its catalogue as
   ordinary media (`Author.importStill`: the portal's files byte for byte, plus renditions), a
-  schedule set and a now/next set over one room's 48 sessions, one surface on both lanes.
+  schedule set and a now/next set over one room's 48 sessions, one surface with one schedule.
 
 ## The shows, and what they reproduce
 
 | Show | Reproduces (structure only) | |
 |---|---|---|
-| `RIG26` | VP26 — the harnesses' workhorse: the same seven days (2026-08-27 … 09-02, New York), a portrait-lane-only config (VT1 → `PORT1`), a directive-heavy config (VT2 → `TAKE1`, now on both lanes and with two locations), a DemoStation config (VT3 → `DEMO1`, re-authored for a portrait DemoStation too: branding in both orientations, a transparent and an opaque overlay, a still and a video background), plus what VP26 lacks: a session board with a video backing (the session JSON shaped like SESSDEV1's import), a default backing, wallpapers. | 36 files, 71 renditions, 1,151 directives, 28 sessions |
+| `RIG26` | VP26 — the harnesses' workhorse: the same seven days (2026-08-27 … 09-02, New York), a config for a portrait sign (VT1 → `PORT1`), a directive-heavy config (VT2 → `TAKE1`, with two locations), a DemoStation config (VT3 → `DEMO1`, re-authored for a portrait DemoStation too: branding in both orientations, a transparent and an opaque overlay, a still and a video background), plus what VP26 lacks: a session board with a video backing (the session JSON shaped like SESSDEV1's import), a default backing, wallpapers. Each config has ONE playlist schedule (plan D-r2-30): a device plays it in the files of its own orientation, and a DemoStation's picture-in-picture plays it in the other orientation's. The "Mini player" playlist VT3's portrait lane once held is scheduled nowhere. | 36 files, 71 renditions, 1,151 directives, 28 sessions |
 | `EDIT26` | WFCHI2026X's "TEST — Editor parity" playlist as it was on 2026-09-26 (before the operator's edits): the same 12 rows, windows, flags and entry ids (2–13; row 4 = entry 5), the same three directives, the same day and zone; the sample's rendition pattern per file. Adds a surface (`EDIT1`) so a device can play it. | 7 files, 11 renditions, 3 directives |
-| `BRAND26` | SESSDEV1's branding, generically: a style book imported through the kit's `BrandImport` (both platforms' faces as media, the rewritten `style.json`, the `brand_member` marks, the project's reference), a session board in both layouts dressed in the style's backing and mark, one surface on both lanes. | 16 files (13 brand members), 5 renditions, 48 sessions |
+| `BRAND26` | SESSDEV1's branding, generically: a style book imported through the kit's `BrandImport` (both platforms' faces as media, the rewritten `style.json`, the `brand_member` marks, the project's reference), a session board in both layouts dressed in the style's backing and mark, one surface whose one schedule plays in either orientation. | 16 files (13 brand members), 5 renditions, 48 sessions |
 | `brands/example/example-2026/1` | A style book as the brand portal publishes one — the stand-in portal the brand tests import from (they used SESSDEV1's licensed book). | 12 faces, 3 assets |
 | `legacy/` | The two refusals the Surface and SurfaceJS tests used the live `VP26/VT1.db` for. | |
 
@@ -114,8 +114,8 @@ this book holds, so the two Studios deliver identical bytes. A `lineHeight` of `
 - `verify` (Swift): a copy of each `_studio/Marquee.db` opens with the kit and migrates nothing;
   every cartridge loads in `MarqueeSurfaceEngineLoader` with 0 warnings and reads as v25 through
   the kit's `openCartridge`; every manifest file and offered rendition is on disk at its size and
-  hash; on the portrait-only config `filesForLanes([.portrait])` is exactly the manifest minus
-  the landscape-only files; the legacy artifacts are refused with `column_missing` / `not_v25`;
+  hash; on `PORT1` (the portrait sign's config) `filesForLanes([.portrait])` is exactly the
+  manifest minus the landscape-only files; the legacy artifacts are refused with `column_missing` / `not_v25`;
   every lock matches.
 - `verify` also measures the style book again from the published files (`VerifyBrand.swift`):
   spec §9's producer items — each face's name in both formats, both directions per platform;

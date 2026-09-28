@@ -10,8 +10,9 @@
 //  media, byte for byte the portal's files, with the renditions Studio's optimizer would add.
 //
 //  The show is one room's session board in both layouts — a schedule set and a now/next set
-//  over the same sessions, each with the style's backing and mark — on one surface with both
-//  lanes, so a client draws it in the style's faces and colours. A session starts on every
+//  over the same sessions, each with the style's backing and mark — on one surface, whose one
+//  schedule a device plays in either orientation (plan D-r2-30), so a client draws it in the
+//  style's faces and colours. A session starts on every
 //  hour of both venue days and runs 45 minutes, so whenever a Surface opens the show (Day 1
 //  at the venue's current time of day, spec §8.2) one is on now or about to be, and the
 //  quarter hour before each start is the board's "nothing now, next at" state.
@@ -151,16 +152,15 @@ enum Brand26 {
             try await a.direct(entry, daily, zone: zoneName)
         }
 
-        // ── One surface, both lanes ──────────────────────────────────────────
+        // ── One surface: one schedule, played in either orientation ─────────
         let t = a.now()
-        let config = try await a.store.insertSurfaceConfig(SurfaceConfig(surfaceId: surface, name: "Branded boards, both lanes",
+        let config = try await a.store.insertSurfaceConfig(SurfaceConfig(surfaceId: surface, name: "Branded boards",
                                                                          created: t, updated: t))
         let lt = a.now()
         _ = try await a.store.insertSurfaceLocation(SurfaceLocation(configId: config.id!, locationId: location,
                                                                     label: "Branded sign", created: lt, updated: lt))
         let authored = a.clock
-        try await a.store.schedulePlaylist(configId: config.id!, slot: .portrait, playlistId: boards.id!, timestamp: authored, now: a.now())
-        try await a.store.schedulePlaylist(configId: config.id!, slot: .landscape, playlistId: boards.id!, timestamp: authored, now: a.now())
+        try await a.store.schedulePlaylist(configId: config.id!, playlistId: boards.id!, timestamp: authored, now: a.now())
 
         // ── Publish: project.db, then the surface ────────────────────────────
         a.advance(to: publishAt)
