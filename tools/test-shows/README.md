@@ -115,7 +115,9 @@ this book holds, so the two Studios deliver identical bytes. A `lineHeight` of `
   every cartridge loads in `MarqueeSurfaceEngineLoader` with 0 warnings and reads as v25 through
   the kit's `openCartridge`; every manifest file and offered rendition is on disk at its size and
   hash; on `PORT1` (the portrait sign's config) `filesForLanes([.portrait])` is exactly the
-  manifest minus the landscape-only files; the legacy artifacts are refused with `column_missing` / `not_v25`;
+  manifest minus the landscape-only files; on `DEMO1` a host without the DemoStation mode fetches
+  PORT1's lanes (the same Rotation, the demo's branding left at the origin) and a DemoStation host
+  every file; the legacy artifacts are refused with `column_missing` / `not_v25`;
   every lock matches.
 - `verify` also measures the style book again from the published files (`VerifyBrand.swift`):
   spec §9's producer items — each face's name in both formats, both directions per platform;

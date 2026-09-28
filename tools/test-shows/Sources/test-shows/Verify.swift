@@ -10,6 +10,8 @@
 //      folder, at its size and hash;
 //    - filesForLanes on PORT1 (the portrait sign's config) returns its portrait lane's files and not
 //      one landscape-only file;
+//    - on DEMO1 a host without the DemoStation mode fetches what it fetches from PORT1 (the same
+//      Rotation; the demo's branding stays at the origin), and a DemoStation host every file;
 //    - the pre-v25 artifacts are refused with their codes;
 //    - every lock file matches its folder;
 //    - the style book and BRAND26: brand spec §9's producer items measured again from the
@@ -37,6 +39,9 @@ enum Verify {
             .filter { !$0.hasPrefix(".") }.sorted()
         for code in codes {
             let root = shows.appendingPathComponent(code)
+            // Each surface's lanes — [portrait, landscape] without the DemoStation mode, then with
+            // it — and its manifest, for the checks across cartridges below.
+            var surfaceLanes: [String: (plain: [Set<Int64>], demo: [Set<Int64>], manifest: Set<Int64>)] = [:]
             // ── the authoring database, through the kit, on a copy ──
             let tmp = FileManager.default.temporaryDirectory.appendingPathComponent("verify-\(code)-\(UUID().uuidString)")
             try FileManager.default.createDirectory(at: tmp, withIntermediateDirectories: true)
@@ -104,6 +109,7 @@ enum Verify {
                     laneLine = "portrait lane \(p.count) (\(bytes(p)) B), landscape lane \(l.count) (\(bytes(l)) B)"
                         + ", DemoStation host: portrait \(dp.count) / landscape \(dl.count)"
                         + "; \(schedule); \(snap.locations.count) location(s): \(locationIds); \(directiveCount) directives"
+                    surfaceLanes[snap.surfaceConfig.surfaceId] = ([p, l], [dp, dl], Set(snap.manifest.keys))
                     // The portrait sign's config (RIG26's PORT1): a config has one schedule
                     // (D-r2-30), and a portrait device fetches its lane's files and nothing
                     // that only a landscape slot names — fetch by lane (D-r2-23).
@@ -149,6 +155,15 @@ enum Verify {
                 let renditions = offered.values.reduce(0) { $0 + $1.count }
                 lines.append("  \(name): rev \(meta?.publishedRevision ?? -1), \(manifest.count) manifest files, \(renditions) renditions offered, "
                              + "\(warnings.count) warnings; \(laneLine)")
+            }
+            // DEMO1 is PORT1's Rotation plus the demo's backgrounds and overlays (cartridge spec §7.7):
+            // an item used only as demo branding is in a lane only on a host that runs the mode.
+            if let demo1 = surfaceLanes["DEMO1"], let port1 = surfaceLanes["PORT1"] {
+                check(demo1.plain == port1.plain, "\(code)/DEMO1.db: without the DemoStation mode its lanes are not PORT1's (the same Rotation)")
+                check(demo1.demo.allSatisfy { $0 == demo1.manifest }, "\(code)/DEMO1.db: a DemoStation host does not fetch every file")
+                let branding = demo1.manifest.subtracting(demo1.plain[0].union(demo1.plain[1]))
+                lines.append("  DEMO1.db: without the DemoStation mode, PORT1's lanes (\(demo1.plain[0].count) / \(demo1.plain[1].count)); "
+                             + "the \(branding.count) files of the demo's branding only on a DemoStation host")
             }
             let problems = try Lock.verify(folder: root)
             check(problems.isEmpty, "\(code): lock: \(problems.joined(separator: "; "))")
