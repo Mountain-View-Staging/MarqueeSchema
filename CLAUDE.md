@@ -5,7 +5,7 @@
 > `session_set.render_modes` and `schedule_template` are DROPPED (the layout a sign shows is the device's board
 > variant). NOT additive, by the operator's no-legacy rule; both peers took it in one cut-over. The test-shows
 > generator gives BRAND26 two template packages (the Show's and set 2's), zipped from the builder's default
-> template with the copied `ZipArchive.swift` under `tools/test-shows/Sources/test-shows/Template/`; `verify`
+> template through the board kit's `MarqueeSessionBoardTemplate` (its `ZipArchive` and `files` rule, since PRD 14 M5-1 — the same bytes as the published packages); `verify`
 > checks both packages ride both lanes and `project.db` keeps the settings and drops the pointer.
 
 Cross-implementation **source of truth** for the Marquee project schema and the contracts

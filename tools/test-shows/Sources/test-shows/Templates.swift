@@ -2,7 +2,7 @@
 //  Templates.swift — BRAND26's session board templates (PRD 14, spec §5.15): the Show's
 //  template and set 2's own, each a package zipped here from the builder's default template
 //  (the reference package the specification publishes as template/default) — deterministic,
-//  through the builder's own ZipArchive (a copy under Template/) and the same `files` rule — and
+//  through the board kit's ZipArchive and its `files` rule (MarqueeSessionBoardTemplate) — and
 //  imported through MediaService.importFile as any media is: one application/zip file, one
 //  media item, the pointer set with the store's setProjectTemplate / setSessionSetTemplate.
 //
@@ -10,9 +10,9 @@
 //  CSS rule, so a test can tell the two apart on screen.
 //
 
-import CryptoKit
 import Foundation
 import MarqueeDataKit
+import MarqueeSessionBoardTemplate
 
 enum Templates {
 
@@ -80,22 +80,12 @@ enum Templates {
         manifest["displayName"] = displayName
         manifest["version"] = version
         if let basedOn { manifest["basedOn"] = ["id": basedOn.0, "version": basedOn.1] } else { manifest.removeValue(forKey: "basedOn") }
-        var files: [String: String] = [:]
-        for entry in entries where entry.path != "template.json" && (isEditable(entry.path) || (entry.path.hasPrefix("fonts/") && !entry.path.hasSuffix(".txt"))) {
-            files[entry.path] = "sha256:" + SHA256.hash(data: entry.data).map { String(format: "%02x", $0) }.joined()
-        }
-        manifest["files"] = files
+        manifest["files"] = TemplatePackage.hashes(entries: entries.filter { $0.path != "template.json" })
         let manifestData = try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]) + Data("\n".utf8)
         entries.removeAll { $0.path == "template.json" }
         entries.append(ZipArchive.Entry(path: "template.json", data: manifestData))
         entries.sort { $0.path < $1.path }
         return Export(zip: try ZipArchive.write(entries: entries), fileName: "\(id)-v\(version).marqueetemplate.zip")
-    }
-
-    /// The text files a package's `files` block hashes: the page, the shared styles, the layouts, the script.
-    static func isEditable(_ path: String) -> Bool {
-        ["index.html", "styles.css", "template.js"].contains(path)
-            || (path.hasPrefix("layouts/") && !path.dropFirst(8).contains("/") && (path.hasSuffix(".html") || path.hasSuffix(".css")))
     }
 
     /// The zip as media: imported by MediaService (content type by its extension), one item in the portrait slot.

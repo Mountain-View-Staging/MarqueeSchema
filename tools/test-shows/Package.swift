@@ -39,6 +39,8 @@ let package = Package(
                 .product(name: "MarqueeSurfaceEngine", package: "MarqueeSurfaceEngine"),
                 .product(name: "MarqueeSurfaceEngineLoader", package: "MarqueeSurfaceEngine"),
                 .product(name: "MarqueeSessionBoard", package: "MarqueeSessionBoard"),
+                // BRAND26's template packages: the kit's zip and package rules (PRD 14 M5-1).
+                .product(name: "MarqueeSessionBoardTemplate", package: "MarqueeSessionBoard"),
                 .product(name: "MarqueeSessionBoardCartridge", package: "MarqueeSessionBoard"),
                 .product(name: "WebPSwift", package: "webp-swift"),
                 .product(name: "GRDB", package: "GRDB.swift"),
