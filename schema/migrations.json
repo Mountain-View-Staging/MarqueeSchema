@@ -73,6 +73,11 @@
       "identifier": "v14-session-board-templates",
       "file": "sql/014-v14-session-board-templates.sql",
       "note": "PRD 14 (2026-10-01; Cartridge Specification §5.15 at 46cf736, spec PR #15). Session board templates: project and session_set gain template_item_id (→ media_item, ON DELETE SET NULL; the package, one application/zip media file; the set's overrides the Show's) and template_settings (JSON { \"vars\": { name: string } }, following the pointer they sit beside). session_set.render_modes and schedule_template are DROPPED: which layouts a sign shows is the device's setting (its board variant), and the layout diff never had a reader. NOT additive (the operator's no-legacy rule, 2026-10-01): both peers take it in one cut-over; a v13 build opens a v14 show read-only. The wire DDL changes with it."
+    },
+    {
+      "identifier": "v15-surface-status-template",
+      "file": "sql/015-v15-surface-status-template.sql",
+      "note": "PRD 14 §5.7 (F-07), M5-4 (2026-10-01). surface_status gains template_id (TEXT, the template on screen at the report; NULL for the Surface's own default or no board), template_version (INTEGER) and board_variant (TEXT, 'now-next' | 'schedule' | 'both', the device's setting), from SurfaceStatus's templateId / templateVersion / boardVariant (MarqueeNetworkKit; the Worker's check-in has accepted them since micro-services ccebf02), so both Studios' Dashboards show the template and the variant from the row whichever path the report came by. Authoring only, never published. Additive and nullable; both peers take it in lock-step (D-r2-26)."
     }
   ]
 }

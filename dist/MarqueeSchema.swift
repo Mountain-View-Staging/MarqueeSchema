@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   de8fabf56e7dfd0e993957aef034c99711ee5ad850684c4b68669d5682306541
+// Checksum:   1dfdedbc6fe00b5fbdf1e5638f0ed0538a4c0f8be058834935d6352c2198ce49
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "de8fabf56e7dfd0e993957aef034c99711ee5ad850684c4b68669d5682306541"
+    public static let checksum = "1dfdedbc6fe00b5fbdf1e5638f0ed0538a4c0f8be058834935d6352c2198ce49"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -33,6 +33,7 @@ public enum MarqueeSchema {
         "v12-one-schedule",
         "v13-emergency-screens-project-links",
         "v14-session-board-templates",
+        "v15-surface-status-template",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -1098,6 +1099,31 @@ ALTER TABLE session_set ADD COLUMN template_item_id INTEGER REFERENCES media_ite
 ALTER TABLE session_set ADD COLUMN template_settings TEXT;
 ALTER TABLE session_set DROP COLUMN render_modes;
 ALTER TABLE session_set DROP COLUMN schedule_template;
+"""#)
+        }
+        // PRD 14 §5.7 (F-07), M5-4 (2026-10-01). surface_status gains template_id (TEXT, the template on screen at the report; NULL for the Surface's own default or no board), template_version (INTEGER) and board_variant (TEXT, 'now-next' | 'schedule' | 'both', the device's setting), from SurfaceStatus's templateId / templateVersion / boardVariant (MarqueeNetworkKit; the Worker's check-in has accepted them since micro-services ccebf02), so both Studios' Dashboards show the template and the variant from the row whichever path the report came by. Authoring only, never published. Additive and nullable; both peers take it in lock-step (D-r2-26).
+        migrator.registerMigration("v15-surface-status-template") { db in
+            try db.execute(sql: #"""
+-- v15-surface-status-template
+-- PRD 14 §5.7 (F-07), M5-4, 2026-10-01. A Surface's status report says which
+-- session board template it is drawing and which of its layouts the device
+-- shows — the two facts a sign's operator now sets on the device (the variant)
+-- and in Studio (the template) — so both Studios' Dashboards show them from the
+-- row, whichever path the report came by (LAN, cloud, a Cache's forwarding):
+--
+--   template_id       TEXT     the template on screen at the report (template.json
+--                              `id`, ≤ 64 [a-z0-9-]); NULL when the default the
+--                              Surface carries is drawing, or no board is up
+--   template_version  INTEGER  its `version`; NULL with template_id
+--   board_variant     TEXT     the device's setting: 'now-next' | 'schedule' | 'both'
+--
+-- Render failures ride last_issue as before (template.load_failed and friends).
+-- Authoring only, never published. Additive and nullable.
+
+ALTER TABLE surface_status ADD COLUMN template_id TEXT;
+ALTER TABLE surface_status ADD COLUMN template_version INTEGER;
+ALTER TABLE surface_status ADD COLUMN board_variant TEXT
+  CHECK (board_variant IS NULL OR board_variant IN ('now-next', 'schedule', 'both'));
 """#)
         }
         return migrator
