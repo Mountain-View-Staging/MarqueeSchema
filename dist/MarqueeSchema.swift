@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   c5bacfd234a74feb1a9f091cb184ff18df550e4418eb03d925687320ca0df5af
+// Checksum:   de8fabf56e7dfd0e993957aef034c99711ee5ad850684c4b68669d5682306541
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "c5bacfd234a74feb1a9f091cb184ff18df550e4418eb03d925687320ca0df5af"
+    public static let checksum = "de8fabf56e7dfd0e993957aef034c99711ee5ad850684c4b68669d5682306541"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -32,6 +32,7 @@ public enum MarqueeSchema {
         "v11-device-orientation",
         "v12-one-schedule",
         "v13-emergency-screens-project-links",
+        "v14-session-board-templates",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -1057,6 +1058,46 @@ CREATE TABLE project_link (
 );
 
 CREATE INDEX idx_project_link_position ON project_link (position);
+"""#)
+        }
+        // PRD 14 (2026-10-01; Cartridge Specification §5.15 at 46cf736, spec PR #15). Session board templates: project and session_set gain template_item_id (→ media_item, ON DELETE SET NULL; the package, one application/zip media file; the set's overrides the Show's) and template_settings (JSON { "vars": { name: string } }, following the pointer they sit beside). session_set.render_modes and schedule_template are DROPPED: which layouts a sign shows is the device's setting (its board variant), and the layout diff never had a reader. NOT additive (the operator's no-legacy rule, 2026-10-01): both peers take it in one cut-over; a v13 build opens a v14 show read-only. The wire DDL changes with it.
+        migrator.registerMigration("v14-session-board-templates") { db in
+            try db.execute(sql: #"""
+-- v14-session-board-templates
+-- Session board templates (PRD 14, 2026-10-01; the Cartridge Specification's §5.15 at
+-- 46cf736, spec PR #15). A session board is rendered from a TEMPLATE PACKAGE — a zip of
+-- template.json, the page, its layouts, styles, fonts and a small engine — that the Show,
+-- or one session set, names; a Surface carries a built-in default for a Show that names
+-- none. The package rides a cartridge as one media file of type application/zip, in the
+-- portrait slot of a media item, taken as the manifest names it (never decoded, never
+-- renditioned) and wanted on every lane.
+--
+-- 1. project.template_item_id / session_set.template_item_id: the media item holding the
+--    package; the set's overrides the Show's, as a backing does. ON DELETE SET NULL: a
+--    template item is archive-not-delete in the UI, and a deleted one leaves the pointer
+--    empty rather than refusing.
+-- 2. project.template_settings / session_set.template_settings: JSON
+--    { "vars": { name: string } } — the Show's values for the variables the template
+--    declares, passed through to the template's data document. The settings follow the
+--    pointer they sit beside (a set with its own template uses its own; a set without one
+--    uses the Show's template with the Show's settings).
+-- 3. session_set.render_modes and session_set.schedule_template are DROPPED. Which of a
+--    template's layouts a sign shows (now / next, the schedule, or both) is the DEVICE's
+--    setting, beside its orientation, never authored; and schedule_template (a layout diff
+--    no player ever read) has no successor. No data moves: a set's authored mode was a
+--    renderer's choice that the device now makes.
+--
+-- NOT additive (two columns removed) — the operator's rule of 2026-10-01: no legacy
+-- support, the format provides what the app does, not what it did. Both peers take v14 in
+-- one cut-over (D-r2-26); a v13 build opens a v14 show read-only through the supersession
+-- guard. The wire DDL (spec §4.3, §4.7) changes with it; format_version stays 25.0.1.
+
+ALTER TABLE project ADD COLUMN template_item_id INTEGER REFERENCES media_item(id) ON DELETE SET NULL;
+ALTER TABLE project ADD COLUMN template_settings TEXT;
+ALTER TABLE session_set ADD COLUMN template_item_id INTEGER REFERENCES media_item(id) ON DELETE SET NULL;
+ALTER TABLE session_set ADD COLUMN template_settings TEXT;
+ALTER TABLE session_set DROP COLUMN render_modes;
+ALTER TABLE session_set DROP COLUMN schedule_template;
 """#)
         }
         return migrator

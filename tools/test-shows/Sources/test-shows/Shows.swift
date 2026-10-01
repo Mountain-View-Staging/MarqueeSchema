@@ -201,7 +201,7 @@ enum Rig26 {
         // Featuring attribute — the conventions the board readers are pinned to.
         let stamp = a.now()
         let set = try await a.store.insertSessionSet(SessionSet(
-            name: "Main room", renderModes: "[\"schedule\"]", duration: 8,
+            name: "Main room", duration: 8,
             backingItemId: boardBacking.id, logoItemId: logoItem.id, created: stamp, updated: stamp))
         let slots: [(Int, Int, Int, Int, String, String)] = [
             (9, 0, 9, 45, "Opening remarks", "Keynote"), (10, 30, 11, 15, "Panel discussion", "Breakout"),

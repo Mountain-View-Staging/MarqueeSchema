@@ -258,13 +258,13 @@ enum VerifyBrand {
         func portal(_ id: String) -> String? {
             try? Lock.sha256(root.appendingPathComponent(ExampleStyle.assets.first { $0.id == id }!.file))
         }
-        check(sets.map(\.renderModes).sorted() == ["[\"now-next\"]", "[\"schedule\"]"], "BRAND26: the sets render \(sets.map(\.renderModes))")
+        check(sets.count == 2, "BRAND26: two session sets of the room, got \(sets.count)")
         for set in sets {
             check(set.brandStyle == nil && bytes(ofItem: set.backingItemId, \.portraitFileId) == portal("backing-portrait")
                   && bytes(ofItem: set.backingItemId, \.landscapeFileId) == portal("backing-landscape")
                   && bytes(ofItem: set.logoItemId, \.portraitFileId) == portal("mark-white")
                   && bytes(ofItem: set.logoItemId, \.landscapeFileId) == portal("mark-white"),
-                  "BRAND26: set \(set.renderModes) is not dressed in the style's backing and mark")
+                  "BRAND26: set \(set.id ?? 0) is not dressed in the style's backing and mark")
         }
 
         // The cartridges, through the Loader.
@@ -280,6 +280,26 @@ enum VerifyBrand {
         let projectSnap = try CartridgeLoader.loadProject(contentsOf: show.appendingPathComponent(CartridgeNaming.projectCartridgeFileName))
         check(projectSnap.project.brandStyle == address && projectSnap.project.brandStyleItemId == nil,
               "project.db: brand \(projectSnap.project.brandStyle ?? "—"), item \(projectSnap.project.brandStyleItemId.map(String.init) ?? "—")")
+
+        // The session board templates (spec §5.15): the Show's and set 2's own, two zips the
+        // manifest names, on every lane; project.db keeps the settings and drops the pointer.
+        let zips = snap.manifest.values.filter { $0.contentType == "application/zip" }
+        check(zips.count == 2, "\(Brand26.surface).db: \(zips.count) template packages in the manifest, not 2")
+        check(snap.warnings.isEmpty, "\(Brand26.surface).db loads with warnings: \(snap.warnings.map(\.message))")
+        let setsById = snap.sessionSets.values.sorted { $0.id < $1.id }
+        check(snap.project.templateItemId != nil && snap.project.templateSettings?.vars["sponsorName"] == "Example sponsor",
+              "\(Brand26.surface).db: the Show's template \(snap.project.templateItemId.map(String.init) ?? "—"), settings \(String(describing: snap.project.templateSettings))")
+        check(setsById.count == 2 && setsById[0].templateItemId == nil && setsById[1].templateItemId != nil
+              && setsById[1].templateItemId != snap.project.templateItemId
+              && setsById[1].templateSettings?.vars["sponsorName"] == "The second room's sponsor",
+              "\(Brand26.surface).db: set 2's own template \(setsById.last?.templateItemId.map(String.init) ?? "—"), set 1 the Show's")
+        let templateFiles = Set([snap.project.templateItemId, setsById.last?.templateItemId].compactMap { $0 }.compactMap { snap.mediaItems[$0]?.portraitFileId })
+        for lane in [MarqueeSurfaceEngine.Orientation.portrait, .landscape] {
+            check(templateFiles.isSubset(of: filesForLanes(snap, lanes: [lane])), "\(Brand26.surface).db: the \(lane) lane does not fetch both template packages")
+        }
+        check(projectSnap.project.templateItemId == nil && projectSnap.project.templateSettings?.vars["sponsorName"] == "Example sponsor",
+              "project.db: template pointer \(projectSnap.project.templateItemId.map(String.init) ?? "—") (must be none), settings kept")
+        lines.append("  templates: \(zips.count) packages (\(zips.map { "\($0.fileSize) B" }.joined(separator: ", "))), the Show's item \(snap.project.templateItemId ?? 0), set 2's item \(setsById.last?.templateItemId ?? 0), on both lanes")
 
         // The player's route: the flat show folder is the media cache.
         if let manifestFile {

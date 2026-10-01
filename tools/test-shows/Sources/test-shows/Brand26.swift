@@ -125,13 +125,14 @@ enum Brand26 {
         }
 
         // ── The board in both layouts: two sets over the same sessions ──────
-        // A set renders exactly one way (its first render mode), so the two layouts are two sets.
+        // Two sets of the same room (a device chooses the layout — its board variant, spec §5.15 —
+        // so the two sets no longer differ by mode; they stay two so the playlist has two boards).
         // The header is the set's name, so both read the room's.
         var sets: [SessionSet] = []
-        for mode in ["schedule", "now-next"] {
+        for _ in ["first", "second"] {
             let stamp = a.now()
             let set = try await a.store.insertSessionSet(SessionSet(
-                name: room, renderModes: "[\"\(mode)\"]", duration: 8,
+                name: room, duration: 8,
                 backingItemId: backing.id, logoItemId: mark.id, created: stamp, updated: stamp))
             for (session, start, end) in sessions {
                 let t = a.now()
@@ -141,6 +142,10 @@ enum Brand26 {
             }
             sets.append(set)
         }
+
+        // ── The session board templates (spec §5.15): the Show's, and the second set's own ──
+        let templates = try await Templates.importTemplates(a, overrideSet: sets[1])
+        report.lines.append(contentsOf: templates.notes)
 
         // ── The playlist: both boards, on from the start of each venue day ──
         let boards = try await a.playlist("Boards")
