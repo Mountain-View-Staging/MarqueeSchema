@@ -298,8 +298,18 @@ enum VerifyBrand {
         for lane in [MarqueeSurfaceEngine.Orientation.portrait, .landscape] {
             check(templateFiles.isSubset(of: filesForLanes(snap, lanes: [lane])), "\(Brand26.surface).db: the \(lane) lane does not fetch both template packages")
         }
-        check(projectSnap.project.templateItemId == nil && projectSnap.project.templateSettings?.vars["sponsorName"] == "Example sponsor",
-              "project.db: template pointer \(projectSnap.project.templateItemId.map(String.init) ?? "—") (must be none), settings kept")
+        // Q-M5-04: project.db carries the Show's template — the project-only clock is its clock layout.
+        let projectTemplateFile = projectSnap.project.templateItemId
+            .flatMap { projectSnap.mediaItems[$0] }.flatMap { $0.portraitFileId ?? $0.landscapeFileId }
+        check(projectSnap.project.templateItemId == snap.project.templateItemId
+              && projectSnap.project.templateSettings?.vars["sponsorName"] == "Example sponsor"
+              && projectTemplateFile.map { projectSnap.manifest[$0]?.contentType == "application/zip" } == true,
+              "project.db: the Show's template \(projectSnap.project.templateItemId.map(String.init) ?? "—"), its package \(projectTemplateFile.map(String.init) ?? "—") — the clock needs both")
+        if let projectTemplateFile {
+            for lane in [MarqueeSurfaceEngine.Orientation.portrait, .landscape] {
+                check(filesForLanes(projectSnap, lanes: [lane]).contains(projectTemplateFile), "project.db: the \(lane) lane does not fetch the Show's template")
+            }
+        }
         lines.append("  templates: \(zips.count) packages (\(zips.map { "\($0.fileSize) B" }.joined(separator: ", "))), the Show's item \(snap.project.templateItemId ?? 0), set 2's item \(setsById.last?.templateItemId ?? 0), on both lanes")
 
         // The player's route: the flat show folder is the media cache.
