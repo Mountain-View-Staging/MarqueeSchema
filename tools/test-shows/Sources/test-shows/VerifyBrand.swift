@@ -30,13 +30,14 @@
 //      style book; every lane fetches all of them; project.db keeps the address only;
 //    - `BrandDelivery.register(manifest:locate:)` — what the Surface calls — registers the
 //      Apple faces from the show folder cleanly and builds the brand the book declares; the
-//      boards' own chooser picks the dark ink over the delivered backings, with no scrim.
+//      Show's template picks its light text over the delivered backings, with no scrim.
 //
 
 import CoreGraphics
 import Foundation
 import MarqueeDataKit
 import MarqueeSessionBoard
+import MarqueeSessionBoardTemplate
 import MarqueeSurfaceEngine
 import MarqueeSurfaceEngineLoader
 
@@ -325,23 +326,32 @@ enum VerifyBrand {
                   "BrandDelivery: the brand is not the book's")
             lines.append("  BrandDelivery.register(manifest:locate:): \(outcome.summary); ink \(hex(brand.ink)), onDark \(hex(brand.onDark)), "
                          + "muted (derived) \(hex(brand.muted)), mutedOnLight \(hex(brand.mutedOnLight))")
-            // The boards' own chooser, over the delivered backings as a Surface measures them:
-            // each board where its text is, on its own stage (SB-05).
-            let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>, BoardCanvas)] =
-                [("portrait", \.portraitFileId, .portrait), ("landscape", \.landscapeFileId, .landscape)]
-            for (slot, keyPath, canvas) in slots {
-                guard let set = sets.first, let item = items.first(where: { $0.id == set.backingItemId }),
-                      let fileId = item[keyPath: keyPath], let file = files[fileId] else { continue }
-                let url = show.appendingPathComponent(file.deliverableFileName)
-                let rows = Contrast.backingExtremes(url: url, region: Contrast.textRegion(.schedule, on: canvas))
-                let column = Contrast.backingExtremes(url: url, region: Contrast.textRegion(.nowNext, on: canvas))
-                let schedule = ScheduleLayoutStyle.choose(brand: brand, backing: rows.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable)
-                let nowNext = SignageLayoutStyle.choose(brand: brand, backing: column.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable)
-                check(rows != nil && column != nil && schedule.isDark && !schedule.needsScrim && nowNext.isDark && !nowNext.needsScrim,
-                      "the \(slot) backing: schedule \(schedule.summary); now/next \(nowNext.summary)")
-                lines.append(String(format: "  the %@ backing as a Surface measures it: schedule rows %.4f…%.4f, board %@; now/next column %.4f…%.4f, board %@",
-                                    slot, rows?.min ?? -1, rows?.max ?? -1, schedule.summary,
-                                    column?.min ?? -1, column?.max ?? -1, nowNext.summary))
+            // The boards are templates (spec §5.15; PRD 14 M5-5 retired the built-in layouts):
+            // set 1 draws the Show's, in the template's own text pair weighed over the delivered
+            // backing where the template's text falls, on each stage — what a Surface chooses.
+            let store = TemplatePackageStore(root: FileManager.default.temporaryDirectory
+                .appendingPathComponent("verify-brand-\(UUID().uuidString)", isDirectory: true))
+            defer { try? FileManager.default.removeItem(at: store.root) }
+            if let itemId = snap.project.templateItemId, let fileId = snap.mediaItems[itemId]?.portraitFileId,
+               let line = snap.manifest[fileId],
+               let package = try? store.package(zipAt: show.appendingPathComponent(line.deliverableFileName), contentHash: line.contentHash) {
+                let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>, BoardCanvas)] =
+                    [("portrait", \.portraitFileId, .portrait), ("landscape", \.landscapeFileId, .landscape)]
+                for (slot, keyPath, canvas) in slots {
+                    guard let set = sets.first, let item = items.first(where: { $0.id == set.backingItemId }),
+                          let fileId = item[keyPath: keyPath], let file = files[fileId] else { continue }
+                    let url = show.appendingPathComponent(file.deliverableFileName)
+                    let region = TemplateTextRegion.region(manifest: package.manifestObject, variant: .both, canvas: canvas.size)
+                    let extremes = Contrast.backingExtremes(url: url, region: region)
+                    let choice = TemplateInk.choose(brand: package.manifest.brand,
+                                                    backing: extremes.map { .measured(min: $0.min, max: $0.max) } ?? .unmeasurable)
+                    check(extremes != nil && choice.ink == .onDark && !choice.decision.needsScrim,
+                          "the \(slot) backing under \(package.label): \(choice.decision.summary)")
+                    lines.append(String(format: "  the %@ backing as a Surface measures it under %@: %.4f…%.4f, %@",
+                                        slot, package.label, extremes?.min ?? -1, extremes?.max ?? -1, choice.decision.summary))
+                }
+            } else {
+                check(false, "\(Brand26.surface).db: the Show's template package could not be read from the show folder")
             }
         }
         return (lines, failures)
