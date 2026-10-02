@@ -26,7 +26,7 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { migrate, hasBeenSuperseded, unknownIdentifiers, KNOWN_IDENTIFIERS } from '../dist/migrations.js'
+import { migrate, hasBeenSuperseded, unknownIdentifiers, KNOWN_IDENTIFIERS, MIGRATIONS, MIGRATION_TABLE } from '../dist/migrations.js'
 
 const REFGEN = new URL('../tools/swift-reference/.build/debug/refgen', import.meta.url).pathname
 
@@ -88,6 +88,41 @@ check(`applied all ${KNOWN_IDENTIFIERS.length} migrations`, applied.length === K
   `applied ${applied.length}`)
 check('a second migrate() is a no-op', migrate(fresh).length === 0)
 check('not superseded by itself', hasBeenSuperseded(fresh) === false)
+
+// v16-retire-style-book: a v15 show carrying a style book. The book's own items (its
+// style.json and a face, members; a set's book named only by pointer) are archived; a
+// brand logo — an image, also a member — stays; the columns and the index are gone.
+{
+  const v15 = new SQL.Database()
+  v15.run(`CREATE TABLE ${MIGRATION_TABLE} (identifier TEXT NOT NULL PRIMARY KEY)`)
+  for (const m of MIGRATIONS.slice(0, MIGRATIONS.findIndex((m) => m.identifier === 'v16-retire-style-book'))) {
+    v15.run(m.sql)
+    v15.run(`INSERT INTO ${MIGRATION_TABLE} (identifier) VALUES (?)`, [m.identifier])
+  }
+  const files = [['style.json', 'application/json'], ['face.woff2', 'font/woff2'], ['logo.png', 'image/png'],
+                 ['set-style.json', 'application/json'], ['content.png', 'image/png']]
+  files.forEach(([name, type], i) => v15.run(
+    `INSERT INTO media_file (id, source_file_name, content_type, created, updated) VALUES (?, ?, ?, ?, ?)`,
+    [i + 1, name, type, NOW, NOW]))
+  const book = 'acme/acme-2026/3'
+  for (const [id, member] of [[1, book], [2, book], [3, book], [4, null], [5, null]]) {
+    v15.run(`INSERT INTO media_item (id, name, landscape_file_id, brand_member, created, updated) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, files[id - 1][0], id, member, NOW, NOW])
+  }
+  v15.run(`INSERT INTO project (cloud_uid, name, brand_style, brand_style_item_id, created, updated) VALUES ('u', 'Show', ?, 1, ?, ?)`, [book, NOW, NOW])
+  v15.run(`INSERT INTO session_set (name, brand_style, brand_style_item_id, created, updated) VALUES ('Room', 'acme/room/1', 4, ?, ?)`, [NOW, NOW])
+  check('v16 is the one migration a v15 show takes', JSON.stringify(migrate(v15)) === '["v16-retire-style-book"]')
+  const archived = v15.exec('SELECT id FROM media_item WHERE archived = 1 ORDER BY id')[0]?.values.flat() ?? []
+  check('v16 archives the style book\'s own items (style.json, a face, a set\'s book), not a brand logo or content',
+    JSON.stringify(archived) === '[1,2,4]', JSON.stringify(archived))
+  const cols = (t) => v15.exec(`PRAGMA table_info(${t})`)[0].values.map((r) => r[1])
+  check('v16 drops the style book columns',
+    !cols('project').some((c) => c.startsWith('brand_')) && !cols('session_set').some((c) => c.startsWith('brand_')) &&
+    !cols('media_item').includes('brand_member'))
+  check('v16 drops the brand_member index',
+    v15.exec(`SELECT 1 FROM sqlite_master WHERE name = 'idx_media_item_brand_member'`).length === 0)
+  check('v16 leaves the database consistent', v15.exec('PRAGMA foreign_key_check').length === 0)
+}
 
 fresh.run(
   `INSERT INTO project (cloud_uid, name, created, updated, retain_originals, timezone, project_code)

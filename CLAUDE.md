@@ -100,10 +100,20 @@ while the repo is public) — or through the sibling checkout. `package.json` ex
 
 ## Status
 
-- **13 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
-  `v13-emergency-screens-project-links`. Both the Swift and JS migrators are generated from
+- **16 migrations** — `v1-baseline` (the former v1..v14 flattened; see rule 2) through
+  `v16-retire-style-book`. Both the Swift and JS migrators are generated from
   `schema/` here; MarqueeDataKit adopts the generated Swift directly (see above), so there is
   one migrator definition, not three.
+- **`v16-retire-style-book` (2026-10-02, PRD 14 §5.10, M5-6)** — the style book leaves the shows:
+  a Show's typefaces, palette and text pair are its session board template's, which the Template
+  Builder imports from the brand portal. The items that were only the style book (brand members
+  or a project's / set's named book whose files are not image or video) are ARCHIVED, never
+  deleted; `project.brand_style` / `brand_style_item_id`, the same pair on `session_set`,
+  `media_item.brand_member` and its index are DROPPED (`ALTER TABLE … DROP COLUMN` on a
+  column-level `REFERENCES` column works on Apple's SQLite under GRDB too —
+  MarqueeDataKit's `testV16ArchivesTheStyleBookAndDropsItsColumns`). The font and JSON content
+  types stay in `MediaContentType` so the archived rows decode. `test/roundtrip.mjs` migrates a
+  v15 show with a style book through it. Not additive: a v15 build opens a v16 show read-only.
 - **`v13-emergency-screens-project-links` (2026-09-28)** — two project-level arrays, authoring
   only: **the cartridge wire is unchanged and no Surface client changes.** Three new tables,
   nothing else touched:

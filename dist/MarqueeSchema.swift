@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT EDIT.
 // Source: MarqueeSchema/schema/migrations.json (+ schema/sql/*.sql)
 // Regenerate: node tools/generate.mjs
-// Checksum:   1dfdedbc6fe00b5fbdf1e5638f0ed0538a4c0f8be058834935d6352c2198ce49
+// Checksum:   392b0fdab20b29b43da441a800f8b8ce7fbd0ef99598498266ae34de56b4238a
 
 import Foundation
 import GRDB
@@ -15,7 +15,7 @@ import GRDB
 public enum MarqueeSchema {
 
     /// sha256 over every identifier + SQL body. Compare across peers to detect drift.
-    public static let checksum = "1dfdedbc6fe00b5fbdf1e5638f0ed0538a4c0f8be058834935d6352c2198ce49"
+    public static let checksum = "392b0fdab20b29b43da441a800f8b8ce7fbd0ef99598498266ae34de56b4238a"
 
     /// Ordered, append-only.
     public static let knownIdentifiers: [String] = [
@@ -34,6 +34,7 @@ public enum MarqueeSchema {
         "v13-emergency-screens-project-links",
         "v14-session-board-templates",
         "v15-surface-status-template",
+        "v16-retire-style-book",
     ]
 
     public static var migrator: DatabaseMigrator {
@@ -1124,6 +1125,44 @@ ALTER TABLE surface_status ADD COLUMN template_id TEXT;
 ALTER TABLE surface_status ADD COLUMN template_version INTEGER;
 ALTER TABLE surface_status ADD COLUMN board_variant TEXT
   CHECK (board_variant IS NULL OR board_variant IN ('now-next', 'schedule', 'both'));
+"""#)
+        }
+        // PRD 14 §5.10, M5-6 (operator, 2026-10-02; Cartridge Specification §9 at retire-style-book). The style book leaves the shows: a Show's typefaces, palette and text pair are its session board template's, imported from the brand portal in the Template Builder. Items that were only the style book (brand members, or a project's / set's named book, with no image or video file) are ARCHIVED; project.brand_style / brand_style_item_id, the same pair on session_set, media_item.brand_member and idx_media_item_brand_member are DROPPED. NOT additive (D-r2-26): both peers take it in one cut-over; a v15 build opens a v16 show read-only. The wire DDL changes with it.
+        migrator.registerMigration("v16-retire-style-book") { db in
+            try db.execute(sql: #"""
+-- v16-retire-style-book
+-- The style book leaves the shows (PRD 14 §5.10, M5-6; operator, 2026-10-02; the Cartridge
+-- Specification's §9 at retire-style-book). A Show's typefaces, palette and text pair are
+-- its session board TEMPLATE's: they travel inside the package (v14), and the Marquee
+-- Template Builder imports them from the brand portal. Nothing in a show names a style book
+-- any more, and no cartridge delivers one.
+--
+-- 1. The items that were only the style book — style.json and the typefaces, every item a
+--    style address claimed or a project or set named as its book, whose files are not image
+--    or video — are ARCHIVED, never deleted (the media rules: archive-not-delete). A brand
+--    image or video (a logo) is ordinary media and stays as it is.
+-- 2. project.brand_style / brand_style_item_id, the same pair on session_set, and
+--    media_item.brand_member (with its index) are DROPPED.
+--
+-- NOT additive — the operator's rule (D-r2-26): both peers take it in one cut-over; a v15
+-- build opens a v16 show read-only through the supersession guard. The wire DDL changes
+-- with it (the spec retires the columns, §10.4); format_version stays 25.0.1.
+
+UPDATE media_item SET archived = 1
+ WHERE archived = 0
+   AND (brand_member IS NOT NULL
+        OR id IN (SELECT brand_style_item_id FROM project     WHERE brand_style_item_id IS NOT NULL)
+        OR id IN (SELECT brand_style_item_id FROM session_set WHERE brand_style_item_id IS NOT NULL))
+   AND NOT EXISTS (SELECT 1 FROM media_file f
+                    WHERE f.id IN (media_item.portrait_file_id, media_item.landscape_file_id)
+                      AND (f.content_type LIKE 'image/%' OR f.content_type LIKE 'video/%'));
+
+DROP INDEX IF EXISTS idx_media_item_brand_member;
+ALTER TABLE media_item  DROP COLUMN brand_member;
+ALTER TABLE project     DROP COLUMN brand_style_item_id;
+ALTER TABLE project     DROP COLUMN brand_style;
+ALTER TABLE session_set DROP COLUMN brand_style_item_id;
+ALTER TABLE session_set DROP COLUMN brand_style;
 """#)
         }
         return migrator

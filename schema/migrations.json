@@ -78,6 +78,11 @@
       "identifier": "v15-surface-status-template",
       "file": "sql/015-v15-surface-status-template.sql",
       "note": "PRD 14 §5.7 (F-07), M5-4 (2026-10-01). surface_status gains template_id (TEXT, the template on screen at the report; NULL for the Surface's own default or no board), template_version (INTEGER) and board_variant (TEXT, 'now-next' | 'schedule' | 'both', the device's setting), from SurfaceStatus's templateId / templateVersion / boardVariant (MarqueeNetworkKit; the Worker's check-in has accepted them since micro-services ccebf02), so both Studios' Dashboards show the template and the variant from the row whichever path the report came by. Authoring only, never published. Additive and nullable; both peers take it in lock-step (D-r2-26)."
+    },
+    {
+      "identifier": "v16-retire-style-book",
+      "file": "sql/016-v16-retire-style-book.sql",
+      "note": "PRD 14 §5.10, M5-6 (operator, 2026-10-02; Cartridge Specification §9 at retire-style-book). The style book leaves the shows: a Show's typefaces, palette and text pair are its session board template's, imported from the brand portal in the Template Builder. Items that were only the style book (brand members, or a project's / set's named book, with no image or video file) are ARCHIVED; project.brand_style / brand_style_item_id, the same pair on session_set, media_item.brand_member and idx_media_item_brand_member are DROPPED. NOT additive (D-r2-26): both peers take it in one cut-over; a v15 build opens a v16 show read-only. The wire DDL changes with it."
     }
   ]
 }
