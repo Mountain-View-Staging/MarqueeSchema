@@ -21,16 +21,13 @@
 //      defeats both inks must be reported as needing a scrim);
 //    - §5 every asset with an id, a kind, a file and the file's own pixel size.
 //
-//  BRAND26, against the kit's import and the player's route:
-//    - the project's reference, the 13 brand members (12 faces + the manifest), each face
-//      byte for byte the portal's; the delivered `style.json` is the portal's book with each
-//      declared path renamed, serialized as JSONSerialization writes it — re-derived here;
+//  BRAND26 (since PRD 14 M5-6, schema v16: a show carries no style book):
+//    - no font or JSON file in the project or in either cartridge's manifest;
 //    - the two session sets (schedule, now-next) carry the style's backing and mark, byte
-//      for byte the portal's assets; BRAND1.db carries every brand member and names the
-//      style book; every lane fetches all of them; project.db keeps the address only;
-//    - `BrandDelivery.register(manifest:locate:)` — what the Surface calls — registers the
-//      Apple faces from the show folder cleanly and builds the brand the book declares; the
-//      Show's template picks its light text over the delivered backings, with no scrim.
+//      for byte the portal's assets;
+//    - the templates carry the brand: the Show's package declares its family (Inter), a
+//      complete text pair and its WOFF2 faces, and picks its light text over the delivered
+//      backings, with no scrim.
 //
 
 import CoreGraphics
@@ -207,49 +204,14 @@ enum VerifyBrand {
         try fm.copyItem(at: show.appendingPathComponent(ProjectFactory.databaseSubpath), to: copy)
         try fm.setAttributes([.posixPermissions: 0o644], ofItemAtPath: copy.path)
         let store = try MarqueeStore(path: copy.path)
-        let project = try await store.loadProject()
         let items = try await store.mediaItems(includeArchived: true)
         let files = Dictionary(uniqueKeysWithValues: try await store.mediaFiles().compactMap { f in f.id.map { ($0, f) } })
         let sets = try await store.sessionSets()
         try store.close()
 
-        check(project?.brandStyle == address, "BRAND26: the project is branded \(project?.brandStyle ?? "—")")
-        let members = items.filter { $0.brandMember == address }
-        check(members.count == apple.count + web.count + 1 && members.allSatisfy { $0.systemGenerated && $0.landscapeFileId == nil },
-              "BRAND26: \(members.count) brand members")
-        let manifestItem = items.first { $0.id == project?.brandStyleItemId }
-        let manifestFile = manifestItem?.portraitFileId.flatMap { files[$0] }
-        check(manifestItem?.brandMember == address && manifestItem?.name == "Style book — \(address)"
-              && manifestFile?.contentType == "application/json"
-              && manifestFile?.originalFileName == "\(ExampleStyle.company)-\(ExampleStyle.style)-\(ExampleStyle.version).json",
-              "BRAND26: the reference names no style book item")
-        var delivered: [String: String] = [:]
-        for path in apple + web {
-            let base = (path as NSString).lastPathComponent
-            let matches = members.filter { $0.name == base }
-            guard matches.count == 1, let file = matches[0].portraitFileId.flatMap({ files[$0] }) else {
-                failures.append("BRAND26: \(matches.count) items for \(path)"); continue
-            }
-            delivered[path] = file.deliverableFileName
-            let same = try Lock.sha256(show.appendingPathComponent(file.deliverableFileName)) == Lock.sha256(root.appendingPathComponent(path))
-            check(file.originalFileName == base && file.contentType == (base.hasSuffix(".otf") ? "font/otf" : "font/woff2") && same,
-                  "BRAND26: \(path) is not delivered byte for byte as \(file.deliverableFileName)")
-        }
-        // The delivered book: the portal's, each declared path renamed, as JSONSerialization writes it.
-        if let manifestFile {
-            var fonts = json["fonts"] as? [String: Any] ?? [:]
-            var fam = fonts["family"] as? [String: Any] ?? [:]
-            var paths = fam["files"] as? [String: [String]] ?? [:]
-            for (platform, list) in paths { paths[platform] = list.map { delivered[$0] ?? ($0 as NSString).lastPathComponent } }
-            fam["files"] = paths; fonts["family"] = fam
-            var rewritten = json
-            rewritten["fonts"] = fonts
-            let expected = try JSONSerialization.data(withJSONObject: rewritten, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
-            let actual = try Data(contentsOf: show.appendingPathComponent(manifestFile.deliverableFileName))
-            check(actual == expected, "BRAND26: the delivered style.json is not the portal's book with the delivered names")
-            lines.append("BRAND26 — \(address): \(members.count) brand members; the delivered style.json (\(actual.count) B, "
-                         + "\(manifestFile.deliverableFileName)) is the portal's book with each path renamed, as JSONSerialization writes it")
-        }
+        // M5-6 (schema v16, spec §9): the show carries no style book — its brand is its templates'.
+        let styleBookFiles = files.values.filter { $0.contentType.hasPrefix("font/") || $0.contentType == "application/json" }
+        check(styleBookFiles.isEmpty, "BRAND26: \(styleBookFiles.count) font or JSON files in the project — a style book's")
         // The two layouts, dressed in the style's selected assets.
         func bytes(ofItem id: Int64?, _ slot: KeyPath<MarqueeDataKit.MediaItem, Int64?>) -> String? {
             guard let item = items.first(where: { $0.id == id }), let fileId = item[keyPath: slot], let file = files[fileId] else { return nil }
@@ -261,7 +223,7 @@ enum VerifyBrand {
         }
         check(sets.count == 2, "BRAND26: two session sets of the room, got \(sets.count)")
         for set in sets {
-            check(set.brandStyle == nil && bytes(ofItem: set.backingItemId, \.portraitFileId) == portal("backing-portrait")
+            check(bytes(ofItem: set.backingItemId, \.portraitFileId) == portal("backing-portrait")
                   && bytes(ofItem: set.backingItemId, \.landscapeFileId) == portal("backing-landscape")
                   && bytes(ofItem: set.logoItemId, \.portraitFileId) == portal("mark-white")
                   && bytes(ofItem: set.logoItemId, \.landscapeFileId) == portal("mark-white"),
@@ -270,17 +232,9 @@ enum VerifyBrand {
 
         // The cartridges, through the Loader.
         let snap = try CartridgeLoader.load(contentsOf: show.appendingPathComponent("\(Brand26.surface).db"))
-        let brandFiles = Set(snap.mediaItems.values.filter { $0.brandMember == address }.compactMap(\.portraitFileId))
-        check(snap.project.brandStyleItemId == manifestItem?.id && brandFiles.count == members.count
-              && brandFiles.isSubset(of: Set(snap.manifest.keys)),
-              "\(Brand26.surface).db: \(brandFiles.count) brand files, style book item \(snap.project.brandStyleItemId.map(String.init) ?? "—")")
-        for lane in [MarqueeSurfaceEngine.Orientation.portrait, .landscape] {
-            let wanted = filesForLanes(snap, lanes: [lane])
-            check(brandFiles.isSubset(of: wanted), "\(Brand26.surface).db: the \(lane) lane does not fetch every brand file")
-        }
+        let styleBookLines = snap.manifest.values.filter { $0.contentType.hasPrefix("font/") || $0.contentType == "application/json" }
+        check(styleBookLines.isEmpty, "\(Brand26.surface).db: \(styleBookLines.count) font or JSON files in the manifest — a style book's")
         let projectSnap = try CartridgeLoader.loadProject(contentsOf: show.appendingPathComponent(CartridgeNaming.projectCartridgeFileName))
-        check(projectSnap.project.brandStyle == address && projectSnap.project.brandStyleItemId == nil,
-              "project.db: brand \(projectSnap.project.brandStyle ?? "—"), item \(projectSnap.project.brandStyleItemId.map(String.init) ?? "—")")
 
         // The session board templates (spec §5.15): the Show's and set 2's own, two zips the
         // manifest names, on every lane; project.db keeps the settings and drops the pointer.
@@ -312,30 +266,8 @@ enum VerifyBrand {
         }
         lines.append("  templates: \(zips.count) packages (\(zips.map { "\($0.fileSize) B" }.joined(separator: ", "))), the Show's item \(snap.project.templateItemId ?? 0), set 2's item \(setsById.last?.templateItemId ?? 0), on both lanes")
 
-        // The player's route: the flat show folder is the media cache.
-        if let manifestFile {
-            let outcome = BrandDelivery.register(manifest: show.appendingPathComponent(manifestFile.deliverableFileName),
-                                                 platform: "apple") { name in
-                let url = show.appendingPathComponent(name)
-                return fm.fileExists(atPath: url.path) ? url : nil
-            }
-            let report = outcome.report
-            check(outcome.isClean && report?.registered.count == apple.count && report?.maskedBySystem.isEmpty == true
-                  && report?.registeredFromFolder(styleRoot: show).count == ExampleStyle.faceNames.count,
-                  "BrandDelivery: \(outcome.summary); \(outcome.notes.joined(separator: "; "))")
-            let brand = outcome.brand
-            let onLight = RGBA(hex: ExampleStyle.colour("onLight")), onDark = RGBA(hex: ExampleStyle.colour("onDark"))
-            check(brand.fonts.name == ExampleStyle.family && brand.fonts.display == ExampleStyle.display
-                  && brand.fonts.postScriptName(weight: 400, italic: false) == "Inter-Regular"
-                  && brand.fonts.postScriptName(weight: 600, italic: true) == "Inter-SemiBold"
-                  && brand.fonts.postScriptName(weight: 700, italic: true) == "Inter-BoldItalic"
-                  && hex(brand.ink) == hex(onLight) && hex(brand.onDark) == hex(onDark)
-                  && hex(brand.muted) == hex(onDark.mixed(toward: onLight, amount: 0.3))
-                  && hex(brand.mutedOnLight) == ExampleStyle.colour("mutedOnLight")
-                  && hex(brand.palette.primary) == ExampleStyle.colour("primary"),
-                  "BrandDelivery: the brand is not the book's")
-            lines.append("  BrandDelivery.register(manifest:locate:): \(outcome.summary); ink \(hex(brand.ink)), onDark \(hex(brand.onDark)), "
-                         + "muted (derived) \(hex(brand.muted)), mutedOnLight \(hex(brand.mutedOnLight))")
+        // The boards are templates, and the templates carry the brand: family, text pair and faces.
+        do {
             // The boards are templates (spec §5.15; PRD 14 M5-5 retired the built-in layouts):
             // set 1 draws the Show's, in the template's own text pair weighed over the delivered
             // backing where the template's text falls, on each stage — what a Surface chooses.
@@ -345,6 +277,14 @@ enum VerifyBrand {
             if let itemId = snap.project.templateItemId, let fileId = snap.mediaItems[itemId]?.portraitFileId,
                let line = snap.manifest[fileId],
                let package = try? store.package(zipAt: show.appendingPathComponent(line.deliverableFileName), contentHash: line.contentHash) {
+                let brand = package.manifest.brand
+                let pair = ["onLight", "onDark", "mutedOnLight", "mutedOnDark"]
+                let faces = (try? fm.contentsOfDirectory(atPath: package.folder.appendingPathComponent("fonts").path)) ?? []
+                check(brand?.cssFamily == ExampleStyle.family && pair.allSatisfy { validHex(brand?.text?[$0]) }
+                      && faces.contains { $0.hasSuffix(".woff2") },
+                      "\(package.label): the template carries no complete brand (\(String(describing: brand?.text)), \(faces.count) font files)")
+                lines.append("  \(package.label): brand \(brand?.cssFamily ?? "—"), text pair \(pair.compactMap { brand?.text?[$0] }.joined(separator: " ")), "
+                             + "\(faces.filter { $0.hasSuffix(".woff2") }.count) WOFF2 faces in the package")
                 let slots: [(String, KeyPath<MarqueeDataKit.MediaItem, Int64?>, BoardCanvas)] =
                     [("portrait", \.portraitFileId, .portrait), ("landscape", \.landscapeFileId, .landscape)]
                 for (slot, keyPath, canvas) in slots {

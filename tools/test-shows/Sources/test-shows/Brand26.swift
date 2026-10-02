@@ -1,13 +1,11 @@
 //
 //  Brand26.swift — BRAND26, the branded show (plan D-r2-28, FIX-03).
 //
-//  The style book `example/example-2026/1` (ExampleStyle.swift) enters the project through the
-//  kit's own `BrandImport.importStyleBook` — the call Studio for Mac's Brand pane makes: every
-//  declared face of every platform through `MediaService.importFile`, `style.json` rewritten
-//  to the names the faces were delivered as and imported itself, every item marked
-//  `brand_member`, the project's reference recorded — on the generator's fixed clock. The
-//  style's backing and mark are selected from its catalogue (spec §5): imported as ordinary
-//  media, byte for byte the portal's files, with the renditions Studio's optimizer would add.
+//  Its brand is its session board templates' (PRD 14 M5-6: a show carries no style book; the
+//  Template Builder imports a brand from the portal into a template). The style's backing and
+//  mark are selected from the stand-in portal's catalogue (`brands/`, ExampleStyle.swift, spec
+//  §5): imported as ordinary media, byte for byte the portal's files, with the renditions
+//  Studio's optimizer would add.
 //
 //  The show is one room's session board in both layouts — a schedule set and a now/next set
 //  over the same sessions, each with the style's backing and mark — on one surface, whose one
@@ -22,7 +20,6 @@ import CoreGraphics
 import Foundation
 import ImageIO
 import MarqueeDataKit
-import MarqueeSessionBoardCartridge
 
 enum Brand26 {
     static let code = "BRAND26"
@@ -59,22 +56,6 @@ enum Brand26 {
                                         timezone: zoneName, start: authoringStart)
         var report = ShowReport(code: code)
         _ = try await a.setDays(days, zone: zone)
-
-        // ── The style book, through the kit's real import ────────────────────
-        let imported = try await BrandImport.importStyleBook(
-            from: styleBook, company: ExampleStyle.company, style: ExampleStyle.style,
-            version: ExampleStyle.version, into: a.service, store: a.store, now: a.now())
-        let declared = ExampleStyle.appleFiles.count + ExampleStyle.webFiles.count
-        guard imported.warnings.isEmpty else {
-            throw GenError.check("BrandImport warned: \(imported.warnings.joined(separator: "; "))")
-        }
-        guard imported.delivered.count == declared, imported.reusedExisting == 0,
-              imported.address == ExampleStyle.address else {
-            throw GenError.check("BrandImport delivered \(imported.delivered.count) of \(declared) faces, "
-                                 + "reused \(imported.reusedExisting), address \(imported.address)")
-        }
-        report.lines.append("style book \(imported.address) through BrandImport: \(imported.notes.joined(separator: "; ")); "
-                            + "manifest item \(imported.manifestItemId)")
 
         // ── The style's backing and mark, selected from its catalogue (spec §5) ──
         func asset(_ id: String) -> URL {
@@ -180,8 +161,7 @@ enum Brand26 {
         report.lines.append("\(result.surfaceId).db rev \(result.publishedRevision) — \(result.mediaFileCount) file(s)")
 
         let files = try await a.store.mediaFiles().count
-        let members = try await a.service.listItems().filter { $0.brandMember != nil }.count
-        report.lines.append("\(files) media files (\(members) brand members, \(a.produced.count) selected assets), "
+        report.lines.append("\(files) media files (\(a.produced.count) selected assets), "
                             + "\(a.produced.reduce(0) { $0 + $1.renditions.count }) generated renditions, "
                             + "\(sessions.count) sessions, \(sets.count) session sets, "
                             + "\(try await a.store.allDirectives().count) directives")

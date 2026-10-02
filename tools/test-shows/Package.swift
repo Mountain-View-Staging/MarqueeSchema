@@ -21,9 +21,8 @@ let package = Package(
         .package(path: "../../../SPM/MarqueeDataKit"),
         // The Swift Loader and filesForLanes, for `verify`.
         .package(path: "../../../SPM/MarqueeSurfaceEngine"),
-        // BRAND26 imports its style book through the kit's own `BrandImport` (FIX-03), and the
-        // checks read it back through `StyleBook` / `BrandDelivery` and measure contrast with
-        // `Contrast` — the code Studio for Mac and the Surface run.
+        // The stand-in portal's style book is read through the kit's `StyleBook`, and the checks
+        // measure contrast with `Contrast` and `TemplateInk` — the code the Surfaces run.
         .package(path: "../../../SPM/MarqueeSessionBoard"),
         // Studio's WebP encoder (libwebp, BSD-3). ImageIO decodes WebP but ships no encoder.
         .package(url: "https://github.com/xocialize/webp-swift", from: "0.1.0"),
@@ -41,7 +40,6 @@ let package = Package(
                 .product(name: "MarqueeSessionBoard", package: "MarqueeSessionBoard"),
                 // BRAND26's template packages: the kit's zip and package rules (PRD 14 M5-1).
                 .product(name: "MarqueeSessionBoardTemplate", package: "MarqueeSessionBoard"),
-                .product(name: "MarqueeSessionBoardCartridge", package: "MarqueeSessionBoard"),
                 .product(name: "WebPSwift", package: "webp-swift"),
                 .product(name: "GRDB", package: "GRDB.swift"),
             ]),
