@@ -18,6 +18,7 @@ swift build -c release
 .build/release/test-shows build  ../../../MarqueeTestShows --show BRAND26   # BRAND26 and its style book alone
 .build/release/test-shows legacy ../../../MarqueeTestShows     # legacy/ alone, the shows untouched
 .build/release/test-shows verify ../../../MarqueeTestShows     # the Swift checks
+.build/release/test-shows index  ../../../MarqueeTestShows     # each show's _published.json and lock, nothing regenerated
 node --no-warnings verify-web.mjs ../../../MarqueeTestShows      # the web data layer's checks
 ```
 
@@ -51,6 +52,11 @@ with `# Marquee test shows`.
   (`recordOptimization`) — what Studio's `MediaOptimizationQueue` stores. Only the rendition
   bytes come from here, and the ledger's engine string says so (`marquee test-shows generator 1`),
   so Studio's optimizer treats every file as still owed if a copy is ever opened in Studio.
+- **The published index** (`PublishedIndex.swift`, PRD 15 F-10): each show's `_published.json`, what
+  the Worker writes beside the cartridges on every publish, from the show's own cartridges — the
+  Worker's bytes (key order fixed, `project.db` first, MD5 ETags, `updatedAt` the newest
+  `generated_at`, so a rewrite over unchanged cartridges is the same bytes). `build` writes it before
+  the lock; `index` writes it alone; `verify` holds the file to its cartridges.
 - **Publishes** `project.db` and every surface with the kit's writer
   (`publishProjectCartridge`, `publishCartridge`), then checkpoints, closes, sets the authoring
   database to a rollback journal and `VACUUM`s it (one file, no WAL, no free pages holding old

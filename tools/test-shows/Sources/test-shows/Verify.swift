@@ -165,6 +165,11 @@ enum Verify {
                 lines.append("  DEMO1.db: without the DemoStation mode, PORT1's lanes (\(demo1.plain[0].count) / \(demo1.plain[1].count)); "
                              + "the \(branding.count) files of the demo's branding only on a DemoStation host")
             }
+            // The published index (PRD 15 F-10): exactly what the Worker would write over these cartridges.
+            let indexText = (try? String(contentsOf: root.appendingPathComponent(PublishedIndex.fileName), encoding: .utf8)) ?? ""
+            let (expectedIndex, listed) = try PublishedIndex.render(showFolder: root, projectCode: code)
+            check(indexText == expectedIndex, "\(code): \(PublishedIndex.fileName) is not the index of its cartridges")
+            lines.append("  \(PublishedIndex.fileName): \(listed.joined(separator: ", "))")
             let problems = try Lock.verify(folder: root)
             check(problems.isEmpty, "\(code): lock: \(problems.joined(separator: "; "))")
         }

@@ -6,6 +6,8 @@
 //                                                  the style book it imports; nothing else is touched
 //    test-shows legacy <checkout>                  legacy/ alone (the shows untouched)
 //    test-shows verify <checkout>                  the Swift checks (see Verify.swift)
+//    test-shows index  <checkout>                  each show's _published.json (PRD 15 F-10) from its
+//                                                  cartridges, and its lock — nothing regenerated
 //
 //  `build` deletes and rewrites only what it owns: shows/RIG26, shows/EDIT26, shows/BRAND26,
 //  brands/ and LICENSES/Inter-OFL-1.1.txt (with BRAND26), and the artifacts in legacy/ (with
@@ -20,6 +22,7 @@ let usage = """
 usage: test-shows build  <path to the marquee-test-shows checkout> [--show <CODE>]...
        test-shows legacy <path to the marquee-test-shows checkout>
        test-shows verify <path to the marquee-test-shows checkout>
+       test-shows index  <path to the marquee-test-shows checkout>
 """
 func fail(_ message: String) -> Never {
     FileHandle.standardError.write(Data((message + "\n").utf8))
@@ -77,6 +80,8 @@ do {
             case Edit26.code: try await Edit26.build(into: shows)
             default: try await Brand26.build(into: shows, styleBook: ExampleStyle.folder(in: repo))
             }
+            // The published index the Worker writes beside the cartridges (PRD 15 F-10), before the lock: it is one of the files.
+            try PublishedIndex.write(showFolder: shows.appendingPathComponent(report.code), projectCode: report.code)
             let lock = try Lock.write(folder: shows.appendingPathComponent(report.code), label: "shows/\(report.code)")
             let bytes = lock.files.reduce(Int64(0)) { $0 + $1.size }
             print("\(report.code): \(lock.files.count) files, \(bytes) bytes")
@@ -86,6 +91,16 @@ do {
         print(String(format: "built in %.0f s", Date().timeIntervalSince(started)))
     case "legacy":
         try buildLegacy()
+    case "index":
+        // The published index alone, over the shows as they are: no media renamed, no clip re-encoded.
+        let shows = repo.appendingPathComponent("shows", isDirectory: true)
+        for code in [Rig26.code, Edit26.code, Brand26.code] {
+            let folder = shows.appendingPathComponent(code)
+            guard FileManager.default.fileExists(atPath: folder.path) else { continue }
+            let listed = try PublishedIndex.write(showFolder: folder, projectCode: code)
+            let lock = try Lock.write(folder: folder, label: "shows/\(code)")
+            print("\(code): \(PublishedIndex.fileName) lists \(listed.joined(separator: ", ")); lock \(lock.files.count) files")
+        }
     case "verify":
         for line in try await Verify.run(repo: repo) { print(line) }
         print("verify: every check passed")
